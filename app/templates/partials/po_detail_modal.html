@@ -1,0 +1,140 @@
+<!-- PO Quick View Slide-out -->
+<div class="flex items-center justify-between mb-6">
+  <h2 class="text-xl font-bold">PO {{ po.po_number }}</h2>
+  <button onclick="closePoModal()" class="text-walmart-gray-100 hover:text-walmart-gray-160 p-1"
+          aria-label="Close detail panel">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+    </svg>
+  </button>
+</div>
+
+<!-- Vendor -->
+<div class="mb-6">
+  <h3 class="text-xs font-semibold text-walmart-gray-100 uppercase tracking-wide mb-2">Vendor</h3>
+  <p class="font-medium text-lg">{{ po.vendor or 'Unknown' }}</p>
+  {% if po.vendor_email %}
+  <a href="mailto:{{ po.vendor_email }}" class="text-walmart-blue-100 hover:underline text-sm">
+    {{ po.vendor_email }}
+  </a>
+  {% else %}
+  <p class="text-walmart-gray-100 text-sm italic">No email on file</p>
+  {% endif %}
+</div>
+
+<!-- Financial Summary -->
+<div class="bg-walmart-gray-5 rounded-xl p-4 mb-6">
+  <h3 class="text-xs font-semibold text-walmart-gray-100 uppercase tracking-wide mb-3">Financials</h3>
+  <dl class="space-y-3 text-sm">
+    <div class="flex justify-between">
+      <dt class="text-walmart-gray-100">PO Total</dt>
+      <dd class="font-bold text-lg">{{ po.po_total | currency }}</dd>
+    </div>
+    <div class="flex justify-between">
+      <dt class="text-walmart-gray-100">Invoiced to Date</dt>
+      <dd class="font-bold text-walmart-green-100">{{ po.invoiced_to_date | currency }}</dd>
+    </div>
+    <div class="flex justify-between border-t border-walmart-gray-50 pt-2">
+      <dt class="text-walmart-gray-100">Remaining to Invoice</dt>
+      <dd class="font-bold text-lg
+        {% if po.is_over_invoiced %}text-walmart-red-100
+        {% elif po.remaining_to_invoice > 0 %}text-walmart-spark-140
+        {% else %}text-walmart-green-100{% endif %}">
+        {{ po.remaining_to_invoice | currency }}
+      </dd>
+    </div>
+    {% if po.is_over_invoiced %}
+    <div class="bg-walmart-red-10 text-walmart-red-100 px-3 py-2 rounded-lg text-sm font-bold text-center">
+      ⚠ OVER-INVOICED
+    </div>
+    {% endif %}
+    {% if po.give_back_flag %}
+    <div class="bg-walmart-red-10 border border-walmart-red-100 px-3 py-2 rounded-lg text-center">
+      <span class="text-xs text-walmart-red-100 font-semibold uppercase">Give-Back Required</span>
+      <p class="text-walmart-red-100 font-bold text-lg">{{ po.give_back_amount | currency }}</p>
+    </div>
+    {% endif %}
+  </dl>
+</div>
+
+<!-- Linked Project -->
+<div class="mb-6">
+  <h3 class="text-xs font-semibold text-walmart-gray-100 uppercase tracking-wide mb-2">Linked Project</h3>
+  {% if po.project_id %}
+  <a href="/projects/{{ po.project_id }}" class="text-walmart-blue-100 hover:underline font-medium">
+    {{ po.store_sequence or po.project_id }} &mdash; {{ po.city or '' }}, {{ po.state or '' }}
+  </a>
+  <div class="mt-1">
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+      {% if po.project_status == 'Active' %}bg-walmart-green-10 text-walmart-green-100
+      {% elif po.project_status == 'Complete' %}bg-walmart-blue-10 text-walmart-blue-100
+      {% elif po.project_status == 'On Hold' %}bg-walmart-spark-10 text-walmart-spark-140
+      {% else %}bg-walmart-red-10 text-walmart-red-100{% endif %}">
+      {{ po.project_status or 'N/A' }}
+    </span>
+  </div>
+  {% else %}
+  <p class="text-walmart-gray-100 italic">No linked project</p>
+  {% endif %}
+</div>
+
+<!-- Meta -->
+<div class="mb-6">
+  <h3 class="text-xs font-semibold text-walmart-gray-100 uppercase tracking-wide mb-2">Details</h3>
+  <dl class="space-y-2 text-sm">
+    <div class="flex justify-between">
+      <dt class="text-walmart-gray-100">PO Status</dt>
+      <dd>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+          {% if po.po_status == 'Open' %}bg-walmart-green-10 text-walmart-green-100
+          {% elif po.po_status == 'Closed' %}bg-walmart-gray-10 text-walmart-gray-160
+          {% else %}bg-walmart-spark-10 text-walmart-spark-140{% endif %}">
+          {{ po.po_status or 'N/A' }}
+        </span>
+      </dd>
+    </div>
+    <div class="flex justify-between">
+      <dt class="text-walmart-gray-100">SAP Project Def</dt>
+      <dd class="font-mono text-xs">{{ po.sap_project_definition or 'N/A' }}</dd>
+    </div>
+    <div class="flex justify-between">
+      <dt class="text-walmart-gray-100">Created</dt>
+      <dd>{{ po.created_date[:10] if po.created_date else 'N/A' }}</dd>
+    </div>
+    <div class="flex justify-between">
+      <dt class="text-walmart-gray-100">Last Updated</dt>
+      <dd>{{ po.last_update[:10] if po.last_update else 'N/A' }}</dd>
+    </div>
+    {% if po.days_since_last_invoice is not none %}
+    <div class="flex justify-between">
+      <dt class="text-walmart-gray-100">Days Since Activity</dt>
+      <dd class="font-medium
+        {% if po.days_since_last_invoice >= 60 %}text-walmart-red-100
+        {% elif po.days_since_last_invoice >= 30 %}text-walmart-spark-140
+        {% else %}text-walmart-gray-160{% endif %}">
+        {{ po.days_since_last_invoice }} days
+      </dd>
+    </div>
+    {% endif %}
+  </dl>
+</div>
+
+<!-- Action Buttons -->
+<div class="flex flex-wrap gap-2 pt-4 border-t border-walmart-gray-10">
+  {% if po.project_id %}
+  <a href="/projects/{{ po.project_id }}"
+     class="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium
+            bg-walmart-blue-100 text-white hover:bg-walmart-blue-110 transition-colors text-center">
+    Open Project
+  </a>
+  {% endif %}
+  <button onclick="closePoModal(); document.querySelector('.po-checkbox[value=&quot;{{ po.po_number }}&quot;]').checked = true; updateExportBtn(); exportSelectedPOs();"
+          class="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium
+                 border border-walmart-gray-50 text-walmart-gray-160 hover:bg-walmart-gray-10 transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+    </svg>
+    Export Email
+  </button>
+</div>

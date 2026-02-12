@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Plumbing Dashboard{% endblock %} | Facility Services</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            walmart: {
+              blue: { 10: '#e5effc', 50: '#80a9f1', 100: '#0053e2', 110: '#004ac9', 130: '#003a9e', 160: '#001e52' },
+              spark: { 10: '#fff8e6', 50: '#ffe18f', 100: '#ffc220', 140: '#995213' },
+              green: { 10: '#e8f5e3', 100: '#2a8703' },
+              red: { 10: '#fde8e6', 100: '#ea1100' },
+              gray: { 5: '#f8f8f8', 10: '#f2f2f2', 50: '#cccccc', 100: '#888888', 160: '#2e2e2e' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    .nav-link { @apply px-4 py-2 rounded-md text-sm font-medium transition-colors; }
+    .nav-link:hover { background-color: rgba(255,255,255,0.15); }
+    .nav-link.active { background-color: rgba(255,255,255,0.25); font-weight: 700; }
+    /* HTMX indicator: hidden by default, shown during request */
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline-block; }
+    /* Inverse: shown by default, hidden during request */
+    .htmx-request .htmx-indicator-hide { display: none; }
+  </style>
+</head>
+<body class="bg-walmart-gray-5 text-walmart-gray-160 min-h-screen">
+
+  <!-- Top Nav -->
+  <nav class="bg-walmart-blue-100 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-3">
+          <span class="text-walmart-spark-100 text-2xl font-bold">✦</span>
+          <span class="text-lg font-bold tracking-tight">Plumbing Projects Dashboard</span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <a href="/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}"
+             aria-label="Dashboard overview">Dashboard</a>
+          <a href="/projects" class="nav-link {% if active_page == 'projects' %}active{% endif %}"
+             aria-label="All projects list">Projects</a>
+          <a href="/pos" class="nav-link {% if active_page == 'pos' %}active{% endif %}"
+             aria-label="Purchase orders list">POs</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="{% if active_page in ('projects', 'pos') %}px-4 sm:px-6 lg:px-8{% else %}max-w-7xl mx-auto px-4 sm:px-6 lg:px-8{% endif %} py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-walmart-gray-50 mt-12 py-6">
+    <div class="max-w-7xl mx-auto px-4 text-center text-walmart-gray-100 text-sm">
+      Facility Services · Lucernex + SAP Integration · Built with 🐶 Code Puppy
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

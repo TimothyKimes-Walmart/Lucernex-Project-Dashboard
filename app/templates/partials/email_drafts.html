@@ -1,0 +1,332 @@
+<!-- Email Export Report -->
+<div class="flex items-center justify-between mb-4">
+  <h2 class="text-xl font-bold">PO Email Report</h2>
+  <button onclick="closeEmailModal()" class="text-walmart-gray-100 hover:text-walmart-gray-160 p-1"
+          aria-label="Close">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+    </svg>
+  </button>
+</div>
+
+<!-- Action Buttons -->
+<div class="flex flex-wrap gap-2 mb-6">
+  <button onclick="copyReportHTML()"
+          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
+                 bg-walmart-blue-100 text-white hover:bg-walmart-blue-110 transition-colors
+                 focus:outline-none focus:ring-2 focus:ring-walmart-blue-100 focus:ring-offset-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+    </svg>
+    Copy Report to Clipboard
+  </button>
+  <span id="copy-feedback" class="text-sm font-medium self-center hidden"></span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- REPORT CONTENT — all inline styles for Outlook compatibility  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="email-report-content">
+
+  <!-- Report Title -->
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Segoe UI,Arial,sans-serif;margin-bottom:16px;">
+    <tr>
+      <td style="font-size:20px;font-weight:bold;color:#2d2d2d;padding-bottom:4px;">Purchase Order Status Report</td>
+    </tr>
+    <tr>
+      <td style="font-size:12px;color:#74767c;">Generated {{ now_utc }} &bull; Walmart Facility Services</td>
+    </tr>
+  </table>
+
+  <!-- Aggregate KPI Cards -->
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Segoe UI,Arial,sans-serif;margin-bottom:16px;">
+    <tr>
+      <!-- Total POs -->
+      <td width="{% if metrics.give_back > 0 %}20{% else %}25{% endif %}%" style="padding:0 4px 0 0;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#e6eefb;border-radius:6px;">
+          <tr><td style="padding:12px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:#0053e2;text-transform:uppercase;letter-spacing:0.5px;">Total POs</div>
+            <div style="font-size:22px;font-weight:bold;color:#0053e2;margin-top:2px;">{{ metrics.po_count }}</div>
+          </td></tr>
+        </table>
+      </td>
+      <!-- PO Value -->
+      <td width="{% if metrics.give_back > 0 %}20{% else %}25{% endif %}%" style="padding:0 4px;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f5f5f5;border-radius:6px;">
+          <tr><td style="padding:12px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:#74767c;text-transform:uppercase;letter-spacing:0.5px;">PO Value</div>
+            <div style="font-size:22px;font-weight:bold;color:#2d2d2d;margin-top:2px;">${{ '{:,.0f}'.format(metrics.total_value) }}</div>
+          </td></tr>
+        </table>
+      </td>
+      <!-- Invoiced -->
+      <td width="{% if metrics.give_back > 0 %}20{% else %}25{% endif %}%" style="padding:0 4px;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#e8f5e3;border-radius:6px;">
+          <tr><td style="padding:12px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:#2a8703;text-transform:uppercase;letter-spacing:0.5px;">Invoiced</div>
+            <div style="font-size:22px;font-weight:bold;color:#2a8703;margin-top:2px;">${{ '{:,.0f}'.format(metrics.invoiced) }}</div>
+          </td></tr>
+        </table>
+      </td>
+      <!-- Remaining -->
+      <td width="{% if metrics.give_back > 0 %}20{% else %}25{% endif %}%" style="padding:0 4px;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#fff5e0;border-radius:6px;">
+          <tr><td style="padding:12px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:#995213;text-transform:uppercase;letter-spacing:0.5px;">Remaining</div>
+            <div style="font-size:22px;font-weight:bold;color:#995213;margin-top:2px;">${{ '{:,.0f}'.format(metrics.remaining) }}</div>
+          </td></tr>
+        </table>
+      </td>
+      {% if metrics.give_back > 0 %}
+      <!-- Give-Back -->
+      <td width="20%" style="padding:0 0 0 4px;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#fde8e8;border-radius:6px;">
+          <tr><td style="padding:12px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:#ea1100;text-transform:uppercase;letter-spacing:0.5px;">Give-Back</div>
+            <div style="font-size:22px;font-weight:bold;color:#ea1100;margin-top:2px;">${{ '{:,.0f}'.format(metrics.give_back) }}</div>
+          </td></tr>
+        </table>
+      </td>
+      {% endif %}
+    </tr>
+  </table>
+
+  <!-- Overall Progress Bar -->
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="font-family:Segoe UI,Arial,sans-serif;margin-bottom:20px;">
+    <tr>
+      <td style="font-size:11px;font-weight:600;color:#2a8703;">{{ '{:.1f}'.format(metrics.pct_invoiced) }}% Invoiced</td>
+      <td style="font-size:11px;font-weight:600;color:#995213;text-align:right;">{{ '{:.1f}'.format(metrics.pct_remaining) }}% Remaining</td>
+    </tr>
+    <tr>
+      <td colspan="2" style="padding:4px 0;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="height:16px;background:#ebebeb;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td style="width:{{ metrics.pct_invoiced }}%;background:#2a8703;height:16px;border-radius:8px 0 0 8px;"></td>
+            {% if metrics.give_back > 0 %}
+            {% set pct_gb = (metrics.give_back / metrics.total_value * 100) if metrics.total_value else 0 %}
+            <td style="width:{{ pct_gb }}%;background:#ea1100;height:16px;"></td>
+            {% endif %}
+            <td style="height:16px;"></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2" style="font-size:10px;color:#74767c;padding-top:4px;">
+        <span style="display:inline-block;width:10px;height:10px;background:#2a8703;border-radius:2px;vertical-align:middle;margin-right:3px;"></span> Invoiced
+        &nbsp;&nbsp;
+        <span style="display:inline-block;width:10px;height:10px;background:#ffc220;border-radius:2px;vertical-align:middle;margin-right:3px;"></span> Remaining
+        {% if metrics.give_back > 0 %}
+        &nbsp;&nbsp;
+        <span style="display:inline-block;width:10px;height:10px;background:#ea1100;border-radius:2px;vertical-align:middle;margin-right:3px;"></span> Give-Back
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <!-- ─── Per-Vendor Sections ─── -->
+  {% for section in vendor_sections %}
+  <table cellpadding="0" cellspacing="0" border="0" width="100%"
+         style="font-family:Segoe UI,Arial,sans-serif;margin-bottom:20px;border:1px solid #d9d9d9;border-radius:6px;overflow:hidden;">
+
+    <!-- Vendor Header -->
+    <tr>
+      <td colspan="10" style="background:#0053e2;color:#ffffff;padding:10px 14px;font-size:14px;">
+        <strong>{{ section.vendor }}</strong>
+        <span style="opacity:0.8;margin-left:6px;font-size:12px;">({{ section.po_count }} PO{{ 's' if section.po_count != 1 }})</span>
+      </td>
+    </tr>
+
+    <!-- Vendor Mini Metrics -->
+    <tr style="background:#f9f9f9;">
+      <td colspan="{% if section.give_back > 0 %}2{% else %}2{% endif %}" style="padding:8px 14px;text-align:center;border-right:1px solid #ebebeb;border-bottom:1px solid #ebebeb;">
+        <div style="font-size:9px;font-weight:700;color:#74767c;text-transform:uppercase;">PO Value</div>
+        <div style="font-size:14px;font-weight:bold;color:#2d2d2d;">${{ '{:,.0f}'.format(section.total) }}</div>
+      </td>
+      <td colspan="2" style="padding:8px 14px;text-align:center;border-right:1px solid #ebebeb;border-bottom:1px solid #ebebeb;">
+        <div style="font-size:9px;font-weight:700;color:#2a8703;text-transform:uppercase;">Invoiced</div>
+        <div style="font-size:14px;font-weight:bold;color:#2a8703;">${{ '{:,.0f}'.format(section.invoiced) }}</div>
+      </td>
+      <td colspan="2" style="padding:8px 14px;text-align:center;border-right:1px solid #ebebeb;border-bottom:1px solid #ebebeb;">
+        <div style="font-size:9px;font-weight:700;color:#995213;text-transform:uppercase;">Remaining</div>
+        <div style="font-size:14px;font-weight:bold;color:#995213;">${{ '{:,.0f}'.format(section.remaining) }}</div>
+      </td>
+      <td colspan="{% if section.give_back > 0 %}4{% else %}2{% endif %}" style="padding:8px 14px;text-align:center;border-bottom:1px solid #ebebeb;">
+        <div style="font-size:9px;font-weight:700;color:#74767c;text-transform:uppercase;">% Complete</div>
+        <div style="font-size:14px;font-weight:bold;color:#2d2d2d;">{{ '{:.0f}'.format(section.pct_invoiced) }}%</div>
+      </td>
+    </tr>
+
+    <!-- Vendor Progress Bar -->
+    <tr>
+      <td colspan="10" style="padding:8px 14px;border-bottom:1px solid #ebebeb;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="height:10px;background:#ebebeb;border-radius:5px;overflow:hidden;">
+          <tr>
+            <td style="width:{{ section.pct_invoiced }}%;background:#2a8703;height:10px;"></td>
+            {% if section.give_back > 0 %}
+            {% set v_pct_gb = (section.give_back / section.total * 100) if section.total else 0 %}
+            <td style="width:{{ v_pct_gb }}%;background:#ea1100;height:10px;"></td>
+            {% endif %}
+            <td style="height:10px;"></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- PO Table Header -->
+    <tr style="background:#f5f5f5;">
+      <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:#74767c;border-bottom:1px solid #d9d9d9;">PO Number</th>
+      <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:#74767c;border-bottom:1px solid #d9d9d9;">Store</th>
+      <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:#74767c;border-bottom:1px solid #d9d9d9;">Location</th>
+      <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:#74767c;border-bottom:1px solid #d9d9d9;">Scope</th>
+      <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:#74767c;border-bottom:1px solid #d9d9d9;">Status</th>
+      <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600;color:#74767c;border-bottom:1px solid #d9d9d9;">PO Total</th>
+      <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600;color:#74767c;border-bottom:1px solid #d9d9d9;">Invoiced</th>
+      <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600;color:#74767c;border-bottom:1px solid #d9d9d9;">Remaining</th>
+      {% if section.give_back > 0 %}
+      <th style="padding:8px 10px;text-align:right;font-size:11px;font-weight:600;color:#ea1100;border-bottom:1px solid #d9d9d9;">Give-Back</th>
+      {% endif %}
+    </tr>
+
+    <!-- PO Rows -->
+    {% for po in section.pos %}
+    <tr style="{% if po.give_back_amount > 0 %}background:#fde8e8;{% elif loop.index is odd %}background:#ffffff;{% else %}background:#fafafa;{% endif %}">
+      <td style="padding:6px 10px;font-size:12px;font-family:Consolas,monospace;font-weight:600;border-bottom:1px solid #ebebeb;">{{ po.po_number }}</td>
+      <td style="padding:6px 10px;font-size:12px;border-bottom:1px solid #ebebeb;">{{ po.store_sequence or '' }}</td>
+      <td style="padding:6px 10px;font-size:12px;border-bottom:1px solid #ebebeb;">{{ po.city or '' }}, {{ po.state or '' }}</td>
+      <td style="padding:6px 10px;font-size:12px;border-bottom:1px solid #ebebeb;max-width:180px;">{{ po.brief_scope_of_work or 'N/A' }}</td>
+      <td style="padding:6px 10px;font-size:12px;border-bottom:1px solid #ebebeb;">
+        <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;
+          {% if po.project_status == 'Active' %}background:#e8f5e3;color:#2a8703;
+          {% elif po.project_status == 'Complete' %}background:#e6eefb;color:#0053e2;
+          {% else %}background:#f0f0f0;color:#74767c;{% endif %}">
+          {{ po.project_status or 'N/A' }}
+        </span>
+      </td>
+      <td style="padding:6px 10px;font-size:12px;font-family:Consolas,monospace;text-align:right;border-bottom:1px solid #ebebeb;">${{ '{:,.2f}'.format(po.po_total) }}</td>
+      <td style="padding:6px 10px;font-size:12px;font-family:Consolas,monospace;text-align:right;color:#2a8703;border-bottom:1px solid #ebebeb;">${{ '{:,.2f}'.format(po.invoiced_to_date) }}</td>
+      <td style="padding:6px 10px;font-size:12px;font-family:Consolas,monospace;text-align:right;border-bottom:1px solid #ebebeb;
+          {% if po.remaining_to_invoice > 0 %}color:#995213;{% endif %}">
+        ${{ '{:,.2f}'.format(po.remaining_to_invoice) }}
+      </td>
+      {% if section.give_back > 0 %}
+      <td style="padding:6px 10px;font-size:12px;font-family:Consolas,monospace;text-align:right;color:#ea1100;font-weight:600;border-bottom:1px solid #ebebeb;">
+        {% if po.give_back_amount > 0 %}${{ '{:,.2f}'.format(po.give_back_amount) }}{% else %}&mdash;{% endif %}
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+
+    <!-- Vendor Totals Row -->
+    <tr style="background:#f0f0f0;">
+      <td colspan="5" style="padding:8px 10px;font-size:12px;font-weight:bold;border-top:2px solid #74767c;">TOTAL</td>
+      <td style="padding:8px 10px;font-size:12px;font-family:Consolas,monospace;font-weight:bold;text-align:right;border-top:2px solid #74767c;">${{ '{:,.2f}'.format(section.total) }}</td>
+      <td style="padding:8px 10px;font-size:12px;font-family:Consolas,monospace;font-weight:bold;text-align:right;color:#2a8703;border-top:2px solid #74767c;">${{ '{:,.2f}'.format(section.invoiced) }}</td>
+      <td style="padding:8px 10px;font-size:12px;font-family:Consolas,monospace;font-weight:bold;text-align:right;color:#995213;border-top:2px solid #74767c;">${{ '{:,.2f}'.format(section.remaining) }}</td>
+      {% if section.give_back > 0 %}
+      <td style="padding:8px 10px;font-size:12px;font-family:Consolas,monospace;font-weight:bold;text-align:right;color:#ea1100;border-top:2px solid #74767c;">${{ '{:,.2f}'.format(section.give_back) }}</td>
+      {% endif %}
+    </tr>
+  </table>
+
+  <!-- Hidden plain-text for mailto fallback -->
+  <div style="display:none;">
+    <pre id="vendor-plain-{{ loop.index }}">PO Status Update \u2013 {{ section.vendor }}
+
+{% for po in section.pos %}PO: {{ po.po_number }} | Store: {{ po.store_sequence }} | {{ po.city }}, {{ po.state }}
+Scope: {{ po.brief_scope_of_work or 'N/A' }}
+PO Total: ${{ '{:,.2f}'.format(po.po_total) }} | Invoiced: ${{ '{:,.2f}'.format(po.invoiced_to_date) }} | Remaining: ${{ '{:,.2f}'.format(po.remaining_to_invoice) }}
+Status: {{ po.project_status or 'N/A' }}{% if po.give_back_amount > 0 %} | Give-Back: ${{ '{:,.2f}'.format(po.give_back_amount) }}{% endif %}
+
+{% endfor %}Totals: PO Value ${{ '{:,.2f}'.format(section.total) }} | Invoiced ${{ '{:,.2f}'.format(section.invoiced) }} | Remaining ${{ '{:,.2f}'.format(section.remaining) }}
+
+Please confirm any outstanding invoices and advise on submission timeline.
+
+Thank you</pre>
+  </div>
+  {% endfor %}
+
+</div>
+<!-- END REPORT CONTENT -->
+
+<!-- Mailto buttons (outside the copy zone) -->
+{% for section in vendor_sections %}
+<div class="mb-3 flex items-center gap-3">
+  <button onclick="openMailto('{{ section.subject | e }}', document.getElementById('vendor-plain-{{ loop.index }}').textContent, '{{ section.vendor_email | e }}')"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+                 border border-walmart-blue-100 text-walmart-blue-100
+                 hover:bg-walmart-blue-100 hover:text-white transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+    </svg>
+    Mailto {{ section.vendor }}
+  </button>
+  {% if section.vendor_email %}
+  <span class="text-xs text-walmart-gray-100">{{ section.vendor_email }}</span>
+  {% else %}
+  <span class="text-xs text-walmart-spark-140 italic">No email on file</span>
+  {% endif %}
+</div>
+{% endfor %}
+
+<div class="mt-6 flex justify-between">
+  <button onclick="copyReportHTML()"
+          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
+                 bg-walmart-blue-100 text-white hover:bg-walmart-blue-110 transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+    </svg>
+    Copy Report to Clipboard
+  </button>
+  <button onclick="closeEmailModal()"
+          class="px-4 py-2 rounded-lg text-sm font-medium border border-walmart-gray-50
+                 text-walmart-gray-160 hover:bg-walmart-gray-10 transition-colors">
+    Close
+  </button>
+</div>
+
+<script>
+function copyReportHTML() {
+  var src = document.getElementById('email-report-content');
+  var fb  = document.getElementById('copy-feedback');
+
+  // 1. Clone HTML into a temporary off-screen contenteditable div
+  //    so the browser treats it as selectable rich content.
+  var tmp = document.createElement('div');
+  tmp.contentEditable = 'true';
+  tmp.setAttribute('style',
+    'position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none;'
+    + 'width:900px;overflow:visible;');
+  tmp.innerHTML = src.innerHTML;
+  document.body.appendChild(tmp);
+
+  // 2. Select everything inside the temp div.
+  var range = document.createRange();
+  range.selectNodeContents(tmp);
+  var sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+
+  // 3. Copy.
+  var ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+
+  // 4. Clean up.
+  sel.removeAllRanges();
+  document.body.removeChild(tmp);
+
+  // 5. Feedback.
+  if (ok) {
+    fb.textContent = '\u2713 Copied! Open Outlook and paste with Ctrl+V.';
+    fb.style.color = '#2a8703';
+  } else {
+    fb.textContent = 'Copy failed \u2013 try selecting the report manually then Ctrl+C.';
+    fb.style.color = '#ea1100';
+  }
+  fb.classList.remove('hidden');
+  setTimeout(function() { fb.classList.add('hidden'); }, 5000);
+}
+</script>

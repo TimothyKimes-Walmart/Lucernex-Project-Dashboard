@@ -1,0 +1,41 @@
+<!-- Data Freshness Info Bar -->
+{% if refresh_meta %}
+<div class="bg-walmart-gray-5 border border-walmart-gray-50 rounded-lg px-4 py-3 mb-6">
+  <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+    <div class="flex items-center gap-1.5 text-walmart-gray-100">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span class="font-semibold uppercase tracking-wide">Data Freshness</span>
+    </div>
+
+    <!-- Dashboard last refreshed -->
+    {% if refresh_meta[0].dashboard_refreshed_at %}
+    <div class="flex items-center gap-1">
+      <span class="font-semibold text-walmart-blue-100">Dashboard Refreshed:</span>
+      <span class="text-walmart-gray-160">{{ refresh_meta[0].dashboard_refreshed_at }}</span>
+    </div>
+    {% endif %}
+
+    <span class="text-walmart-gray-50">│</span>
+
+    <!-- Source freshness -->
+    {% for meta in refresh_meta %}
+    <div class="flex items-center gap-1">
+      <span class="font-semibold text-walmart-gray-100">{{ meta.source_label }}:</span>
+      <span class="text-walmart-gray-160">{{ meta.source_last_updated }}</span>
+    </div>
+    {% if not loop.last %}
+    <span class="text-walmart-gray-50">·</span>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="bg-walmart-spark-10 border border-walmart-spark-100 rounded-lg px-4 py-3 mb-6">
+  <p class="text-xs text-walmart-spark-140">
+    <strong>No refresh data yet.</strong> Click <strong>Refresh Data</strong> to pull the latest from Lucernex & SAP.
+  </p>
+</div>
+{% endif %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% set active_page = "dashboard" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Dashboard Search Bar -->
+<div class="mb-6">
+  <form id="dash-search-form"
+        hx-get="/dashboard/content" hx-target="#dashboard-content"
+        hx-trigger="keyup changed delay:400ms from:#dash-search"
+        hx-swap="innerHTML">
+    <label for="dash-search" class="block text-xs font-medium text-walmart-gray-100 mb-1">Search Dashboard</label>
+    <input id="dash-search" type="text" name="search" value="{{ search }}"
+           placeholder="Filter dashboard… use ; to combine (e.g. Used Cooking Oil; Active)"
+           class="w-full max-w-2xl rounded-lg border border-walmart-gray-50 px-4 py-2.5 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-walmart-blue-100"
+           aria-label="Search dashboard">
+  </form>
+</div>
+
+<div id="dashboard-content">
+  {% include "partials/dashboard_content.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+<!-- PO Summary KPI Cards -->
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-4 text-center">
+  <p class="text-xs text-walmart-gray-100 font-semibold uppercase tracking-wide">Total POs</p>
+  <p class="text-2xl font-bold text-walmart-blue-100 mt-1">{{ summary.total_pos | default(0) }}</p>
+</div>
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-4 text-center">
+  <p class="text-xs text-walmart-gray-100 font-semibold uppercase tracking-wide">PO Value</p>
+  <p class="text-2xl font-bold text-walmart-gray-160 mt-1">{{ summary.total_po_value | currency }}</p>
+</div>
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-4 text-center">
+  <p class="text-xs text-walmart-gray-100 font-semibold uppercase tracking-wide">Total Invoiced</p>
+  <p class="text-2xl font-bold text-walmart-green-100 mt-1">{{ summary.total_invoiced | currency }}</p>
+</div>
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-4 text-center">
+  <p class="text-xs text-walmart-gray-100 font-semibold uppercase tracking-wide">Remaining</p>
+  <p class="text-2xl font-bold text-walmart-spark-140 mt-1">{{ summary.total_remaining | currency }}</p>
+</div>
+<div class="bg-white rounded-xl shadow-sm border border-walmart-red-10 p-4 text-center">
+  <p class="text-xs text-walmart-red-100 font-semibold uppercase tracking-wide">Give-Back Exposure</p>
+  <p class="text-2xl font-bold text-walmart-red-100 mt-1">{{ summary.total_give_back | currency }}</p>
+</div>
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-4 text-center">
+  <p class="text-xs text-walmart-gray-100 font-semibold uppercase tracking-wide">Complete w/ Open POs</p>
+  <p class="text-2xl font-bold text-walmart-spark-140 mt-1">{{ summary.complete_with_open_pos | default(0) }}</p>
+</div>

@@ -1,0 +1,168 @@
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <p class="text-sm font-medium text-walmart-gray-100 uppercase tracking-wide">Total Projects</p>
+    <p class="text-3xl font-bold text-walmart-blue-100 mt-1">{{ stats.total_projects }}</p>
+    <p class="text-sm text-walmart-green-100 mt-1">{{ stats.active_projects }} active</p>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <p class="text-sm font-medium text-walmart-gray-100 uppercase tracking-wide">Total Budget</p>
+    <p class="text-3xl font-bold text-walmart-blue-100 mt-1">{{ stats.total_budget | currency }}</p>
+    <p class="text-sm text-walmart-gray-100 mt-1">{{ stats.total_actuals | currency }} spent</p>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <p class="text-sm font-medium text-walmart-gray-100 uppercase tracking-wide">Remaining to Invoice</p>
+    <p class="text-3xl font-bold text-walmart-spark-140 mt-1">{{ stats.remaining_to_invoice | currency }}</p>
+    <p class="text-sm text-walmart-gray-100 mt-1">{{ stats.total_pos }} purchase orders</p>
+  </div>
+</div>
+
+<!-- Charts Row 1 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <h2 class="text-lg font-semibold mb-4">Projects by Type</h2>
+    <div style="height: 300px;">
+      <canvas id="chartByType"></canvas>
+    </div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <h2 class="text-lg font-semibold mb-4">Projects by Status</h2>
+    <div style="height: 300px;">
+      <canvas id="chartByStatus"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="grid grid-cols-1 gap-6 mb-8">
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <h2 class="text-lg font-semibold mb-4">Budget Breakdown by Project Type</h2>
+    <div style="height: 350px;">
+      <canvas id="chartBudget"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Tables -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Top Contractors -->
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <h2 class="text-lg font-semibold mb-4">Top General Contractors</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm" role="table">
+        <thead>
+          <tr class="border-b border-walmart-gray-50">
+            <th class="text-left py-2 px-3 font-semibold" scope="col">Contractor</th>
+            <th class="text-right py-2 px-3 font-semibold" scope="col">Projects</th>
+            <th class="text-right py-2 px-3 font-semibold" scope="col">Total Budget</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for gc in contractors %}
+          <tr class="border-b border-walmart-gray-10 hover:bg-walmart-gray-5 transition-colors">
+            <td class="py-2 px-3">{{ gc.general_contractor }}</td>
+            <td class="py-2 px-3 text-right font-medium">{{ gc.project_count }}</td>
+            <td class="py-2 px-3 text-right">{{ gc.total_budget | currency }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PO Status Summary -->
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <h2 class="text-lg font-semibold mb-4">Purchase Order Status</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm" role="table">
+        <thead>
+          <tr class="border-b border-walmart-gray-50">
+            <th class="text-left py-2 px-3 font-semibold" scope="col">Status</th>
+            <th class="text-right py-2 px-3 font-semibold" scope="col">Count</th>
+            <th class="text-right py-2 px-3 font-semibold" scope="col">Total Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for po in po_summary %}
+          <tr class="border-b border-walmart-gray-10 hover:bg-walmart-gray-5 transition-colors">
+            <td class="py-2 px-3">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                {% if po.po_status == 'Open' %}bg-walmart-green-10 text-walmart-green-100
+                {% elif po.po_status == 'Closed' %}bg-walmart-gray-10 text-walmart-gray-160
+                {% else %}bg-walmart-spark-10 text-walmart-spark-140{% endif %}">
+                {{ po.po_status }}
+              </span>
+            </td>
+            <td class="py-2 px-3 text-right font-medium">{{ po.cnt }}</td>
+            <td class="py-2 px-3 text-right">{{ po.total | currency }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Inline chart init — runs after HTMX swap too -->
+<script>
+  (function() {
+    const WM_BLUE = '#0053e2';
+    const WM_SPARK = '#ffc220';
+    const WM_GREEN = '#2a8703';
+    const WM_RED = '#ea1100';
+    const PALETTE = [WM_BLUE, WM_SPARK, WM_GREEN, WM_RED, '#80a9f1', '#ffe18f', '#995213', '#cccccc'];
+
+    Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+
+    const byType = {{ by_type_json | safe }};
+    new Chart(document.getElementById('chartByType'), {
+      type: 'doughnut',
+      data: {
+        labels: byType.map(d => d.project_type.replace('PLBG ', '')),
+        datasets: [{
+          data: byType.map(d => d.cnt),
+          backgroundColor: PALETTE.slice(0, byType.length),
+          borderWidth: 2, borderColor: '#fff'
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    const byStatus = {{ by_status_json | safe }};
+    const statusColors = { 'Active': WM_GREEN, 'Complete': WM_BLUE, 'On Hold': WM_SPARK, 'Cancelled': WM_RED };
+    new Chart(document.getElementById('chartByStatus'), {
+      type: 'doughnut',
+      data: {
+        labels: byStatus.map(d => d.project_status),
+        datasets: [{
+          data: byStatus.map(d => d.cnt),
+          backgroundColor: byStatus.map(d => statusColors[d.project_status] || '#ccc'),
+          borderWidth: 2, borderColor: '#fff'
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    const budgetData = {{ budget_by_type_json | safe }};
+    new Chart(document.getElementById('chartBudget'), {
+      type: 'bar',
+      data: {
+        labels: budgetData.map(d => d.project_type.replace('PLBG ', '')),
+        datasets: [
+          { label: 'Actuals', data: budgetData.map(d => d.budget_actuals), backgroundColor: WM_BLUE },
+          { label: 'Committed', data: budgetData.map(d => d.budget_committed), backgroundColor: WM_SPARK },
+          { label: 'Open', data: budgetData.map(d => d.budget_open), backgroundColor: '#80a9f1' },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          x: { stacked: true, grid: { display: false } },
+          y: { stacked: true, ticks: { callback: v => '$' + (v / 1000).toFixed(0) + 'K' } }
+        },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  })();
+</script>

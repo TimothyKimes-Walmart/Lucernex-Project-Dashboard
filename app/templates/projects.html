@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% set active_page = "projects" %}
+
+{% block title %}All Projects{% endblock %}
+
+{% block content %}
+<!-- Data Freshness -->
+{% include 'partials/refresh_info.html' %}
+
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+    <h1 class="text-2xl font-bold">All Plumbing Projects</h1>
+    <p class="text-walmart-gray-100 text-sm mt-1 sm:mt-0">{{ projects | length }} project(s)</p>
+  </div>
+
+  <!-- Filters + hidden sort state all inside one form -->
+  <form id="filter-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6"
+        hx-get="/projects/table" hx-target="#projects-table"
+        hx-trigger="change, keyup changed delay:300ms from:input[name=search], sort-changed">
+    <div>
+      <label for="filter-banner" class="block text-xs font-medium text-walmart-gray-100 mb-1">Banner</label>
+      <select id="filter-banner" name="banner"
+              class="w-full rounded-lg border border-walmart-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-walmart-blue-100">
+        <option value="">All Banners</option>
+        {% for b in banners %}
+        <option value="{{ b }}" {% if b == selected_banner %}selected{% endif %}>{{ b }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="filter-type" class="block text-xs font-medium text-walmart-gray-100 mb-1">Project Type</label>
+      <select id="filter-type" name="project_type"
+              class="w-full rounded-lg border border-walmart-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-walmart-blue-100">
+        <option value="">All Types</option>
+        {% for t in types %}
+        <option value="{{ t }}" {% if t == selected_type %}selected{% endif %}>{{ t.replace('PLBG ', '') }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="filter-status" class="block text-xs font-medium text-walmart-gray-100 mb-1">Status</label>
+      <select id="filter-status" name="status"
+              class="w-full rounded-lg border border-walmart-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-walmart-blue-100">
+        <option value="">All Statuses</option>
+        {% for s in statuses %}
+        <option value="{{ s }}" {% if s == selected_status %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="filter-contractor" class="block text-xs font-medium text-walmart-gray-100 mb-1">Contractor</label>
+      <select id="filter-contractor" name="contractor"
+              class="w-full rounded-lg border border-walmart-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-walmart-blue-100">
+        <option value="">All Contractors</option>
+        {% for c in contractors %}
+        <option value="{{ c }}" {% if c == selected_contractor %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="lg:col-span-2">
+      <label for="filter-search" class="block text-xs font-medium text-walmart-gray-100 mb-1">Search</label>
+      <input id="filter-search" type="text" name="search" value="{{ search }}"
+             placeholder="Search… use ; to combine (e.g. Used Cooking Oil; Reynalds = both must match)"
+             class="w-full rounded-lg border border-walmart-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-walmart-blue-100"
+             aria-label="Search projects">
+    </div>
+
+    <!-- Sort state lives inside the form so hx-get picks it up -->
+    <input type="hidden" id="sort-field" name="sort" value="{{ sort }}">
+    <input type="hidden" id="sort-order" name="order" value="{{ order }}">
+    <input type="hidden" id="search-fields-input" name="search_fields" value="{{ active_search_fields | join(',') }}">
+  </form>
+
+  <!-- Search field toggles -->
+  <div class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs font-medium text-walmart-gray-100 mr-1">Search in:</span>
+    {% for key, meta in search_fields_meta.items() %}
+    <button type="button"
+            data-field="{{ key }}"
+            class="search-field-chip px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer
+              {% if key in active_search_fields %}
+                bg-walmart-blue-100 text-white border-walmart-blue-100 hover:bg-walmart-blue-110
+              {% else %}
+                bg-white text-walmart-gray-100 border-walmart-gray-50 hover:border-walmart-gray-100
+              {% endif %}"
+            aria-pressed="{{ 'true' if key in active_search_fields else 'false' }}"
+            aria-label="Toggle search in {{ meta.label }}">
+      {{ meta.label }}
+    </button>
+    {% endfor %}
+    <button type="button" id="toggle-all-fields"
+            class="px-2.5 py-1 rounded-full text-xs font-medium border border-walmart-gray-50 text-walmart-gray-100 hover:border-walmart-blue-100 hover:text-walmart-blue-100 transition-all cursor-pointer ml-1"
+            aria-label="Toggle all search fields">
+      All
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="overflow-x-auto w-full" id="projects-table" style="table-layout: fixed;">
+    {% include "partials/projects_table.html" %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function sortBy(column) {
+    const sortField = document.getElementById('sort-field');
+    const sortOrder = document.getElementById('sort-order');
+
+    if (sortField.value === column) {
+      sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortField.value = column;
+      sortOrder.value = 'asc';
+    }
+
+    htmx.trigger('#filter-form', 'sort-changed');
+  }
+
+  // ── Search field toggle chips ──────────────────────────────────
+  const allFieldKeys = {{ search_fields_meta.keys() | list | tojson }};
+
+  function getActiveFields() {
+    return Array.from(document.querySelectorAll('.search-field-chip[aria-pressed="true"]'))
+      .map(btn => btn.dataset.field);
+  }
+
+  function syncSearchFieldsInput() {
+    const active = getActiveFields();
+    document.getElementById('search-fields-input').value = active.join(',');
+  }
+
+  function updateChipStyles() {
+    document.querySelectorAll('.search-field-chip').forEach(btn => {
+      const on = btn.getAttribute('aria-pressed') === 'true';
+      btn.className = btn.className
+        .replace(/bg-walmart-blue-100|bg-white/g, '')
+        .replace(/text-white|text-walmart-gray-100/g, '')
+        .replace(/border-walmart-blue-100|border-walmart-gray-50/g, '')
+        .replace(/hover:bg-walmart-blue-110|hover:border-walmart-gray-100/g, '')
+        .replace(/\s+/g, ' ').trim();
+      if (on) {
+        btn.classList.add('bg-walmart-blue-100', 'text-white', 'border-walmart-blue-100', 'hover:bg-walmart-blue-110');
+      } else {
+        btn.classList.add('bg-white', 'text-walmart-gray-100', 'border-walmart-gray-50', 'hover:border-walmart-gray-100');
+      }
+    });
+  }
+
+  document.querySelectorAll('.search-field-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const on = btn.getAttribute('aria-pressed') === 'true';
+      // Don't allow turning off the last chip
+      if (on && getActiveFields().length <= 1) return;
+      btn.setAttribute('aria-pressed', on ? 'false' : 'true');
+      updateChipStyles();
+      syncSearchFieldsInput();
+      // Only re-trigger search if there's text in the search box
+      if (document.getElementById('filter-search').value.trim()) {
+        htmx.trigger('#filter-form', 'sort-changed');
+      }
+    });
+  });
+
+  document.getElementById('toggle-all-fields').addEventListener('click', () => {
+    const active = getActiveFields();
+    const allOn = active.length === allFieldKeys.length;
+    document.querySelectorAll('.search-field-chip').forEach(btn => {
+      btn.setAttribute('aria-pressed', allOn ? 'false' : 'true');
+    });
+    // If turning all off, keep at least one (first)
+    if (allOn) {
+      document.querySelector('.search-field-chip').setAttribute('aria-pressed', 'true');
+    }
+    updateChipStyles();
+    syncSearchFieldsInput();
+    if (document.getElementById('filter-search').value.trim()) {
+      htmx.trigger('#filter-form', 'sort-changed');
+    }
+  });
+
+  // ── URL sync ──────────────────────────────────────────────────
+  document.body.addEventListener('htmx:afterSwap', function(e) {
+    if (e.detail.target.id !== 'projects-table') return;
+    const form = document.getElementById('filter-form');
+    const params = new URLSearchParams(new FormData(form));
+    for (const [key, val] of [...params.entries()]) {
+      if (!val) params.delete(key);
+    }
+    // Clean up search_fields if all are active (default)
+    const sf = params.get('search_fields');
+    if (sf && sf.split(',').length === allFieldKeys.length) {
+      params.delete('search_fields');
+    }
+    const qs = params.toString();
+    const url = '/projects' + (qs ? '?' + qs : '');
+    history.replaceState(null, '', url);
+  });
+</script>
+{% endblock %}
