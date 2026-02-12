@@ -32,8 +32,11 @@
     /* HTMX indicator: hidden by default, shown during request */
     .htmx-indicator { display: none; }
     .htmx-request .htmx-indicator { display: inline-block; }
-    /* Inverse: shown by default, hidden during request */
     .htmx-request .htmx-indicator-hide { display: none; }
+    /* Cost redaction mode */
+    body.costs-hidden .cost-data { filter: blur(8px); user-select: none; pointer-events: none; }
+    body.costs-hidden .cost-chart { filter: blur(12px); user-select: none; pointer-events: none; }
+    body.costs-hidden .cost-hide { display: none !important; }
   </style>
 </head>
 <body class="bg-walmart-gray-5 text-walmart-gray-160 min-h-screen">
@@ -53,6 +56,18 @@
              aria-label="All projects list">Projects</a>
           <a href="/pos" class="nav-link {% if active_page == 'pos' %}active{% endif %}"
              aria-label="Purchase orders list">POs</a>
+          <!-- Cost Toggle -->
+          <div class="ml-4 pl-4 border-l border-white/20 flex items-center gap-2">
+            <label for="cost-toggle" class="text-xs text-white/70 cursor-pointer select-none">Costs</label>
+            <button id="cost-toggle" onclick="toggleCosts()" role="switch" aria-checked="true"
+                    aria-label="Toggle cost visibility"
+                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                           bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50">
+              <span id="cost-toggle-dot"
+                    class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform translate-x-4"></span>
+            </button>
+            <span id="cost-toggle-label" class="text-xs font-medium text-white/90">ON</span>
+          </div>
         </div>
       </div>
     </div>
@@ -70,6 +85,31 @@
     </div>
   </footer>
 
+  <script>
+    function toggleCosts() {
+      const body = document.body;
+      const btn = document.getElementById('cost-toggle');
+      const dot = document.getElementById('cost-toggle-dot');
+      const label = document.getElementById('cost-toggle-label');
+      const hidden = body.classList.toggle('costs-hidden');
+      btn.setAttribute('aria-checked', !hidden);
+      dot.classList.toggle('translate-x-4', !hidden);
+      dot.classList.toggle('translate-x-0.5', hidden);
+      btn.classList.toggle('bg-white/30', !hidden);
+      btn.classList.toggle('bg-red-400/60', hidden);
+      label.textContent = hidden ? 'OFF' : 'ON';
+      label.classList.toggle('text-white/90', !hidden);
+      label.classList.toggle('text-red-200', hidden);
+      // Persist preference in sessionStorage
+      sessionStorage.setItem('costsHidden', hidden ? '1' : '0');
+    }
+    // Restore preference on load
+    (function() {
+      if (sessionStorage.getItem('costsHidden') === '1') {
+        toggleCosts();
+      }
+    })();
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -122,11 +122,11 @@
             </span>
           </td>
           <!-- PO Total -->
-          <td class="py-3 px-3 text-right font-medium">{{ po.po_total | currency }}</td>
+          <td class="py-3 px-3 text-right font-medium cost-data">{{ po.po_total | currency }}</td>
           <!-- Invoiced -->
-          <td class="py-3 px-3 text-right">{{ po.invoiced_to_date | currency }}</td>
+          <td class="py-3 px-3 text-right cost-data">{{ po.invoiced_to_date | currency }}</td>
           <!-- Remaining -->
-          <td class="py-3 px-3 text-right font-medium
+          <td class="py-3 px-3 text-right font-medium cost-data
             {% if po.is_over_invoiced %}text-walmart-red-100{% elif po.remaining_to_invoice > 0 %}text-walmart-spark-140{% else %}text-walmart-green-100{% endif %}">
             {{ po.remaining_to_invoice | currency }}
             {% if po.is_over_invoiced %}
@@ -136,7 +136,7 @@
           <!-- Give-Back -->
           <td class="py-3 px-3 text-right">
             {% if po.give_back_flag %}
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-walmart-red-10 text-walmart-red-100">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-walmart-red-10 text-walmart-red-100 cost-data">
               ⚠ {{ po.give_back_amount | currency }}
             </span>
             {% else %}

@@ -1,0 +1,3080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plumbing Dashboard Report | Facility Services</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body.costs-hidden .cost-data { filter: blur(8px); user-select: none; pointer-events: none; }
+    body.costs-hidden .cost-chart { filter: blur(12px); user-select: none; pointer-events: none; }
+    body.costs-hidden .cost-hide { display: none !important; }
+    @media print { nav, footer { display: none; } main { padding: 0 !important; } }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+
+  <!-- Top Nav -->
+  <nav class="bg-[#0053e2] text-white shadow-lg print:hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-3">
+          <span class="text-[#ffc220] text-2xl font-bold">✦</span>
+          <span class="text-lg font-bold tracking-tight">Plumbing Projects Dashboard</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <label for="cost-toggle" class="text-xs text-white/70 cursor-pointer select-none">Costs</label>
+            <button id="cost-toggle" onclick="toggleCosts()" role="switch" aria-checked="true"
+                    aria-label="Toggle cost visibility"
+                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                           bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50">
+              <span id="cost-toggle-dot"
+                    class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform translate-x-4"></span>
+            </button>
+            <span id="cost-toggle-label" class="text-xs font-medium text-white/90">ON</span>
+          </div>
+          <span class="text-sm opacity-80">Static Report · Generated February 12, 2026 at 04:02 PM</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Executive Insights -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+      <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+        <span class="text-[#0053e2]">📊</span> Executive Insights
+      </h2>
+      <ul class="space-y-2 text-sm leading-relaxed">
+        <li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span><span>The plumbing portfolio has <strong>197 projects</strong> with <strong>149 (76%)</strong> currently active.</span></li>
+<li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span><span>Budget utilisation is at <strong>44%</strong> ($702K spent of $1.6M total).</span></li>
+<li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span><span><strong>$2.5M</strong> remains to be invoiced across 290 purchase orders.</span></li>
+<li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span><span>🔔 <strong>Give-back opportunity:</strong> 1 completed projects still have open PO balances totalling <strong>$236K</strong>.</span></li>
+<li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span><span><strong>PLBG EQUIPMENT REPLACEMENT</strong> is the largest category with 191 projects.</span></li>
+<li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span><span>Top contractor is <strong>Reynalds Brothers LLC</strong> handling 71 projects ($299K budget).</span></li>
+      </ul>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Projects</p>
+        <p class="text-3xl font-bold text-[#0053e2] mt-1">197</p>
+        <p class="text-sm text-green-600 mt-1">149 active</p>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Budget</p>
+        <p class="text-3xl font-bold text-[#0053e2] mt-1 cost-data">$1,596,106.20</p>
+        <p class="text-sm text-gray-500 mt-1 cost-data">$701,507.44 spent</p>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Remaining to Invoice</p>
+        <p class="text-3xl font-bold text-[#995213] mt-1 cost-data">$2,515,392.94</p>
+        <p class="text-sm text-gray-500 mt-1">290 purchase orders</p>
+      </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-semibold mb-4">Projects by Type</h2>
+        <div style="height: 300px;"><canvas id="chartByType"></canvas></div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-semibold mb-4">Projects by Status</h2>
+        <div style="height: 300px;"><canvas id="chartByStatus"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8 cost-chart">
+      <h2 class="text-lg font-semibold mb-4">Budget Breakdown by Project Type</h2>
+      <div style="height: 350px;"><canvas id="chartBudget"></canvas></div>
+    </div>
+
+    <!-- Bottom Tables -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-semibold mb-4">Top General Contractors</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm" role="table">
+            <thead>
+              <tr class="border-b border-gray-300">
+                <th class="text-left py-2 px-3 font-semibold" scope="col">Contractor</th>
+                <th class="text-right py-2 px-3 font-semibold" scope="col">Projects</th>
+                <th class="text-right py-2 px-3 font-semibold" scope="col">Total Budget</th>
+              </tr>
+            </thead>
+            <tbody><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right font-medium">71</td>
+          <td class="py-2 px-3 text-right cost-data">$299,019.75</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3">Unassigned</td>
+          <td class="py-2 px-3 text-right font-medium">51</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right font-medium">43</td>
+          <td class="py-2 px-3 text-right cost-data">$927,033.18</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right font-medium">22</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3">APTIM Environmental & Infrastructur</td>
+          <td class="py-2 px-3 text-right font-medium">5</td>
+          <td class="py-2 px-3 text-right cost-data">$37,092.20</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3">Stokes Plumbing LLC</td>
+          <td class="py-2 px-3 text-right font-medium">3</td>
+          <td class="py-2 px-3 text-right cost-data">$1.07</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3">WREN ASSOCIATES LTD</td>
+          <td class="py-2 px-3 text-right font-medium">1</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3">Liquid Environmental Solutions of T</td>
+          <td class="py-2 px-3 text-right font-medium">1</td>
+          <td class="py-2 px-3 text-right cost-data">$332,960.00</td>
+        </tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-semibold mb-4">Purchase Order Status</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm" role="table">
+            <thead>
+              <tr class="border-b border-gray-300">
+                <th class="text-left py-2 px-3 font-semibold" scope="col">Status</th>
+                <th class="text-right py-2 px-3 font-semibold" scope="col">Count</th>
+                <th class="text-right py-2 px-3 font-semibold" scope="col">Total Value</th>
+              </tr>
+            </thead>
+            <tbody><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-800">
+              9
+            </span>
+          </td>
+          <td class="py-2 px-3 text-right font-medium">290</td>
+          <td class="py-2 px-3 text-right cost-data">$8,554,406.18</td>
+        </tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full Projects Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+      <h2 class="text-lg font-semibold mb-4">All Projects (197)</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" role="table" id="projectsTable">
+          <thead class="sticky top-0 bg-white">
+            <tr class="border-b-2 border-gray-300">
+              <th class="text-left py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(0)">Entity ID ↕</th>
+              <th class="text-left py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(1)">Type ↕</th>
+              <th class="text-left py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(2)">Store ↕</th>
+              <th class="text-left py-2 px-3 font-semibold" scope="col">Location</th>
+              <th class="text-left py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(4)">Status ↕</th>
+              <th class="text-left py-2 px-3 font-semibold" scope="col">Scope</th>
+              <th class="text-left py-2 px-3 font-semibold" scope="col">Contractor</th>
+              <th class="text-right py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(7)">Budget ↕</th>
+              <th class="text-right py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(8)">Actuals ↕</th>
+            </tr>
+          </thead>
+          <tbody><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1811537</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2873</td>
+          <td class="py-2 px-3">TROY, MI</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+              Complete
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Grease Interceptor Replacement</td>
+          <td class="py-2 px-3">Liquid Environmental Solutions of T</td>
+          <td class="py-2 px-3 text-right cost-data">$332,960.00</td>
+          <td class="py-2 px-3 text-right cost-data">$96,901.12</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1815579</td>
+          <td class="py-2 px-3 text-xs">SANITARY/GREASE INFRASTRUCTURE</td>
+          <td class="py-2 px-3">906</td>
+          <td class="py-2 px-3">GALLUP, NM</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Construction Complete
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Replacing ~550 of SS and GW line to correct grade</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$613,500.00</td>
+          <td class="py-2 px-3 text-right cost-data">$613,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1817813</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6041</td>
+          <td class="py-2 px-3">SHARON SPRINGS, NY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Domestic Booster Pump replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1821073</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3853</td>
+          <td class="py-2 px-3">HURON, SD</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">APTIM Environmental & Infrastructur</td>
+          <td class="py-2 px-3 text-right cost-data">$3,430.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1821696</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6173</td>
+          <td class="py-2 px-3">ROBERTSDALE, AL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,888.66</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1822076</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1555</td>
+          <td class="py-2 px-3">EL CENTRO, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Due Diligence
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1822268</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5740</td>
+          <td class="py-2 px-3">MOBILE, AL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$13,666.24</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1822269</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8126</td>
+          <td class="py-2 px-3">BROWNSVILLE, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1822270</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4724</td>
+          <td class="py-2 px-3">HOOVER, AL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$17,721.16</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1822432</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">962</td>
+          <td class="py-2 px-3">TRINIDAD, CO</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Due Diligence
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1822586</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6336</td>
+          <td class="py-2 px-3">TEMPLE, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">APTIM Environmental & Infrastructur</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1822587</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5624</td>
+          <td class="py-2 px-3">FARMERS BRANCH, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$13,428.17</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1822588</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5802</td>
+          <td class="py-2 px-3">CANOVANAS, PR</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1822589</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">842</td>
+          <td class="py-2 px-3">PUEBLO, CO</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1823734</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6807</td>
+          <td class="py-2 px-3">MEMPHIS, TN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1823735</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3207</td>
+          <td class="py-2 px-3">SANFORD, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,931.16</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828183</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8174</td>
+          <td class="py-2 px-3">MERRILLVILLE, IN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$14,901.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828184</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6404</td>
+          <td class="py-2 px-3">FAIRLAWN, OH</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$31,901.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828185</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6664</td>
+          <td class="py-2 px-3">UTICA, MI</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$13,186.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828186</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">840</td>
+          <td class="py-2 px-3">WARNER ROBINS, GA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$13,466.24</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828187</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2627</td>
+          <td class="py-2 px-3">TAMPA, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$18,010.86</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828188</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2846</td>
+          <td class="py-2 px-3">OLIVE BRANCH, MS</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,996.14</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828189</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6975</td>
+          <td class="py-2 px-3">CABOT, AR</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$12,976.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828190</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5908</td>
+          <td class="py-2 px-3">SEVIERVILLE, TN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$12,195.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828191</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3023</td>
+          <td class="py-2 px-3">SAN JOSE, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$5,950.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828192</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2159</td>
+          <td class="py-2 px-3">OLEAN, NY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828193</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1302</td>
+          <td class="py-2 px-3">NORTON, VA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828194</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2560</td>
+          <td class="py-2 px-3">BERLIN, MD</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828195</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">155</td>
+          <td class="py-2 px-3">SENATOBIA, MS</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+              Cancelled
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828196</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4865</td>
+          <td class="py-2 px-3">SIOUX FALLS, SD</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828197</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6387</td>
+          <td class="py-2 px-3">PINELLAS PARK, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828198</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2586</td>
+          <td class="py-2 px-3">CHEEKTOWAGA, NY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$10,215.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828714</td>
+          <td class="py-2 px-3 text-xs">SANITARY/GREASE INFRASTRUCTURE</td>
+          <td class="py-2 px-3">6082</td>
+          <td class="py-2 px-3">CLARKSVILLE, AR</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Line Area 100 & 200 Sanitary from restrooms out to manhole</td>
+          <td class="py-2 px-3">Stokes Plumbing LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$135,000.00</td>
+          <td class="py-2 px-3 text-right cost-data">$135,000.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828745</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8250</td>
+          <td class="py-2 px-3">MCALLEN, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828746</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8156</td>
+          <td class="py-2 px-3">LAREDO, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828747</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6976</td>
+          <td class="py-2 px-3">WAKE FOREST, NC</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828748</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6181</td>
+          <td class="py-2 px-3">PAPILLION, NE</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828749</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8267</td>
+          <td class="py-2 px-3">CORPUS CHRISTI, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828750</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2403</td>
+          <td class="py-2 px-3">PUYALLUP, WA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$10,215.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1828751</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8163</td>
+          <td class="py-2 px-3">COLUMBIA, MO</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$14,901.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1829022</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6363</td>
+          <td class="py-2 px-3">JACKSONVILLE, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,000.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1829023</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6406</td>
+          <td class="py-2 px-3">NIAGARA FALLS, NY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$10,215.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1829024</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3188</td>
+          <td class="py-2 px-3">STONE MOUNTAIN, GA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$17,596.16</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1829025</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8116</td>
+          <td class="py-2 px-3">JACKSONVILLE, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,885.94</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1829026</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6482</td>
+          <td class="py-2 px-3">DALLAS, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+              Cancelled
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1829027</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6428</td>
+          <td class="py-2 px-3">MEDFORD, NY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1829028</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">857</td>
+          <td class="py-2 px-3">SANFORD, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$17,546.73</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1829029</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6448</td>
+          <td class="py-2 px-3">NEW PORT RICHEY, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">WREN ASSOCIATES LTD</td>
+          <td class="py-2 px-3 text-right cost-data">$2,267,429.80</td>
+          <td class="py-2 px-3 text-right cost-data">$2,318,131.53</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1830230</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6452</td>
+          <td class="py-2 px-3">ASHEVILLE, NC</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1830231</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5627</td>
+          <td class="py-2 px-3">GRESHAM, OR</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$20,430.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1830232</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4142</td>
+          <td class="py-2 px-3">ORLANDO, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$14,451.79</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1830233</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6460</td>
+          <td class="py-2 px-3">ALTOONA, PA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$17,000.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1830234</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5960</td>
+          <td class="py-2 px-3">SOCORRO, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$12,754.25</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1830235</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4378</td>
+          <td class="py-2 px-3">ONLEY, VA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1830427</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8244</td>
+          <td class="py-2 px-3">HOUSTON, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$12,489.53</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1830428</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3140</td>
+          <td class="py-2 px-3">BAKERSFIELD, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$9,229.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1831697</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3179</td>
+          <td class="py-2 px-3">THOUSAND OAKS, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$7,497.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1831699</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8224</td>
+          <td class="py-2 px-3">WICHITA FALLS, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$37,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1831700</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6245</td>
+          <td class="py-2 px-3">HARKER HEIGHTS, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1833831</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5182</td>
+          <td class="py-2 px-3">MURFREESBORO, TN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1833832</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4857</td>
+          <td class="py-2 px-3">CAPE CORAL, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834467</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4452</td>
+          <td class="py-2 px-3">GREENVILLE, SC</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$11,971.16</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834468</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4445</td>
+          <td class="py-2 px-3">CLEMSON, SC</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834469</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6582</td>
+          <td class="py-2 px-3">BLUFFTON, SC</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834470</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6976</td>
+          <td class="py-2 px-3">WAKE FOREST, NC</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+              Cancelled
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Duplicate of 6976.1014</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834779</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3363</td>
+          <td class="py-2 px-3">OWENSBORO, KY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$41,710.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834780</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1655</td>
+          <td class="py-2 px-3">CRAWFORDSVILLE, IN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$19,850.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834781</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2644</td>
+          <td class="py-2 px-3">SAGINAW, MI</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$40,850.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834782</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">711</td>
+          <td class="py-2 px-3">GLASGOW, KY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$41,710.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834783</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3324</td>
+          <td class="py-2 px-3">SHEBOYGAN, WI</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$19,850.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834784</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5399</td>
+          <td class="py-2 px-3">DIXON, IL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$42,850.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834785</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2815</td>
+          <td class="py-2 px-3">ROLLING MEADOWS, IL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$40,850.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834786</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2912</td>
+          <td class="py-2 px-3">TAYLOR, MI</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$40,850.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834787</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6929</td>
+          <td class="py-2 px-3">TEMPLE, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$30,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834788</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">211</td>
+          <td class="py-2 px-3">HILLSBORO, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">APTIM Environmental & Infrastructur</td>
+          <td class="py-2 px-3 text-right cost-data">$90,290.00</td>
+          <td class="py-2 px-3 text-right cost-data">$13,341.81</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834789</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">471</td>
+          <td class="py-2 px-3">LANCASTER, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$51,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834790</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5147</td>
+          <td class="py-2 px-3">DALLAS, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$46,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,723.31</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834791</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5416</td>
+          <td class="py-2 px-3">ARLINGTON, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$46,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$31,824.79</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834792</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1801</td>
+          <td class="py-2 px-3">ARLINGTON, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$46,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,723.31</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834793</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2690</td>
+          <td class="py-2 px-3">MADISON, AL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$46,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$14,525.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834794</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">939</td>
+          <td class="py-2 px-3">WACO, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$46,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$13,341.81</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834795</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">128</td>
+          <td class="py-2 px-3">JONESBORO, AR</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$46,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,759.63</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834796</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1561</td>
+          <td class="py-2 px-3">MEMPHIS, TN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$51,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834797</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2058</td>
+          <td class="py-2 px-3">RALEIGH, NC</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$46,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,578.06</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834798</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">723</td>
+          <td class="py-2 px-3">TROY, AL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$46,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$14,525.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834799</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">501</td>
+          <td class="py-2 px-3">LAUREL, MS</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$46,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834800</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">406</td>
+          <td class="py-2 px-3">SMYRNA, TN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$51,860.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834801</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5422</td>
+          <td class="py-2 px-3">BAINBRIDGE, GA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$43,430.00</td>
+          <td class="py-2 px-3 text-right cost-data">$34,265.70</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834802</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5145</td>
+          <td class="py-2 px-3">SAN ANTONIO, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$43,430.00</td>
+          <td class="py-2 px-3 text-right cost-data">$3,430.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834803</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">151</td>
+          <td class="py-2 px-3">MCALESTER, OK</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$48,430.00</td>
+          <td class="py-2 px-3 text-right cost-data">$39,755.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834804</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4</td>
+          <td class="py-2 px-3">SILOAM SPRINGS, AR</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$43,430.00</td>
+          <td class="py-2 px-3 text-right cost-data">$33,131.88</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834805</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3234</td>
+          <td class="py-2 px-3">ROGERSVILLE, TN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$43,430.00</td>
+          <td class="py-2 px-3 text-right cost-data">$35,840.81</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834806</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1174</td>
+          <td class="py-2 px-3">THOMASVILLE, AL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$48,430.00</td>
+          <td class="py-2 px-3 text-right cost-data">$37,023.19</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834807</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1185</td>
+          <td class="py-2 px-3">AUSTIN, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$63,430.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,723.31</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834808</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6336</td>
+          <td class="py-2 px-3">TEMPLE, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$58,300.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,356.03</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834966</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6430</td>
+          <td class="py-2 px-3">CHEYENNE, WY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834967</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4819</td>
+          <td class="py-2 px-3">BAKERSFIELD, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$10,215.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834968</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6461</td>
+          <td class="py-2 px-3">GRAND ISLAND, NE</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834969</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">7229</td>
+          <td class="py-2 px-3">EL PASO, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1834970</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4774</td>
+          <td class="py-2 px-3">SECAUCUS, NJ</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$10,215.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835344</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6518</td>
+          <td class="py-2 px-3">BRISTOL, VA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$10,215.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835345</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">121</td>
+          <td class="py-2 px-3">OKMULGEE, OK</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835346</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4794</td>
+          <td class="py-2 px-3">LAKELAND, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835347</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8175</td>
+          <td class="py-2 px-3">HARRISBURG, PA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835348</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5162</td>
+          <td class="py-2 px-3">SANTA CLARITA, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835349</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1956</td>
+          <td class="py-2 px-3">BILLINGS, MT</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835350</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3870</td>
+          <td class="py-2 px-3">ARLINGTON, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835351</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4843</td>
+          <td class="py-2 px-3">PEARLAND, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835352</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6429</td>
+          <td class="py-2 px-3">BATTLE CREEK, MI</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$14,901.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835370</td>
+          <td class="py-2 px-3 text-xs">SANITARY/GREASE INFRASTRUCTURE</td>
+          <td class="py-2 px-3">6041</td>
+          <td class="py-2 px-3">SHARON SPRINGS, NY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Sanitary sewer rehabilitation</td>
+          <td class="py-2 px-3">Stokes Plumbing LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$522,000.00</td>
+          <td class="py-2 px-3 text-right cost-data">$530,880.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835803</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4138</td>
+          <td class="py-2 px-3">OMAHA, NE</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$7,497.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835804</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6626</td>
+          <td class="py-2 px-3">SOUTH GATE, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">APTIM Environmental & Infrastructur</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835805</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6239</td>
+          <td class="py-2 px-3">TIMONIUM, MD</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835806</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">794</td>
+          <td class="py-2 px-3">HUTCHINSON, KS</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1835807</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1956</td>
+          <td class="py-2 px-3">BILLINGS, MT</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1838808</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8183</td>
+          <td class="py-2 px-3">SAINT CLOUD, MN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1838809</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6404</td>
+          <td class="py-2 px-3">FAIRLAWN, OH</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">APTIM Environmental & Infrastructur</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1838810</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6528</td>
+          <td class="py-2 px-3">CINCINNATI, OH</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$14,901.00</td>
+          <td class="py-2 px-3 text-right cost-data">$1,715.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1838811</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5780</td>
+          <td class="py-2 px-3">PARAGOULD, AR</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1838812</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">851</td>
+          <td class="py-2 px-3">RUIDOSO DOWNS, NM</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$10,338.27</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1838813</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4908</td>
+          <td class="py-2 px-3">OWENSBORO, KY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$14,901.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1838814</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8139</td>
+          <td class="py-2 px-3">HOLLAND, OH</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$14,901.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1838815</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8177</td>
+          <td class="py-2 px-3">LAS VEGAS, NV</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$35,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1838816</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6521</td>
+          <td class="py-2 px-3">HOUMA, LA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1838959</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2789</td>
+          <td class="py-2 px-3">BOYNTON BEACH, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,140.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,710.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1838960</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8290</td>
+          <td class="py-2 px-3">ORLANDO, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Financial Closeout
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$15,956.20</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839402</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2100</td>
+          <td class="py-2 px-3">CHEBOYGAN, MI</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$58,430.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839403</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8290</td>
+          <td class="py-2 px-3">ORLANDO, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+              Cancelled
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Duplicate - Cancelled</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839404</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2001</td>
+          <td class="py-2 px-3">FRESNO, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839405</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">989</td>
+          <td class="py-2 px-3">METAIRIE, LA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$11,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839406</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4938</td>
+          <td class="py-2 px-3">ALBUQUERQUE, NM</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839896</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8115</td>
+          <td class="py-2 px-3">AUGUSTA, GA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839897</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8128</td>
+          <td class="py-2 px-3">PEORIA, IL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$14,901.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839898</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6364</td>
+          <td class="py-2 px-3">NAPLES, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839899</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">7658</td>
+          <td class="py-2 px-3">BRUNSWICK, GA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839900</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3123</td>
+          <td class="py-2 px-3">SANTA CLARA, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$7,497.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839901</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4134</td>
+          <td class="py-2 px-3">STANTON, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839902</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4745</td>
+          <td class="py-2 px-3">THORNTON, CO</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839903</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2761</td>
+          <td class="py-2 px-3">POUNDING MILL, VA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839997</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3135</td>
+          <td class="py-2 px-3">FORT WORTH, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1839998</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">7072</td>
+          <td class="py-2 px-3">CAPE GIRARDEAU, MO</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$14,901.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1840252</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4703</td>
+          <td class="py-2 px-3">ALBUQUERQUE, NM</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1840253</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">7251</td>
+          <td class="py-2 px-3">FORT WORTH, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1840254</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1487</td>
+          <td class="py-2 px-3">MICHIGAN CITY, IN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$14,901.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1840255</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5232</td>
+          <td class="py-2 px-3">RIFLE, CO</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1840256</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2634</td>
+          <td class="py-2 px-3">GORHAM, NH</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1840257</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6539</td>
+          <td class="py-2 px-3">WATERTOWN, NY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1840308</td>
+          <td class="py-2 px-3 text-xs">SANITARY/GREASE INFRASTRUCTURE</td>
+          <td class="py-2 px-3">3001</td>
+          <td class="py-2 px-3">TROUTMAN, NC</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Expanding restroom capacity with lift station & upgrading Cu…</td>
+          <td class="py-2 px-3">Stokes Plumbing LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$1,222,665.38</td>
+          <td class="py-2 px-3 text-right cost-data">$1,305,195.29</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1840764</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3049</td>
+          <td class="py-2 px-3">TUCSON, AZ</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1840765</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6425</td>
+          <td class="py-2 px-3">CASPER, WY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$8,500.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1840766</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4421</td>
+          <td class="py-2 px-3">COLUMBUS, GA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Reynalds Brothers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$19,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1840859</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6422</td>
+          <td class="py-2 px-3">LONGVIEW, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841175</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">174</td>
+          <td class="py-2 px-3">COCOA, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841176</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">551</td>
+          <td class="py-2 px-3">PALATKA, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841177</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">563</td>
+          <td class="py-2 px-3">ORANGE CITY, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841178</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">582</td>
+          <td class="py-2 px-3">PORT ORANGE, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841179</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">613</td>
+          <td class="py-2 px-3">ORMOND BEACH, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841180</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">697</td>
+          <td class="py-2 px-3">OCALA, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841181</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">767</td>
+          <td class="py-2 px-3">LAKE CITY, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841182</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">771</td>
+          <td class="py-2 px-3">MERRITT ISLAND, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841183</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">814</td>
+          <td class="py-2 px-3">OKEECHOBEE, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841184</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">931</td>
+          <td class="py-2 px-3">VERO BEACH, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841185</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">942</td>
+          <td class="py-2 px-3">OCOEE, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841186</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">943</td>
+          <td class="py-2 px-3">CASSELBERRY, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841187</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1068</td>
+          <td class="py-2 px-3">SEBASTIAN, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841188</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1085</td>
+          <td class="py-2 px-3">PORT RICHEY, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841189</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1090</td>
+          <td class="py-2 px-3">JACKSONVILLE, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841190</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1205</td>
+          <td class="py-2 px-3">MACCLENNY, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841191</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1245</td>
+          <td class="py-2 px-3">LAKELAND, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841192</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1283</td>
+          <td class="py-2 px-3">STARKE, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841193</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1444</td>
+          <td class="py-2 px-3">JACKSONVILLE, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841194</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2843</td>
+          <td class="py-2 px-3">SUMMERFIELD, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841195</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3308</td>
+          <td class="py-2 px-3">MIDDLEBURG, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841196</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3310</td>
+          <td class="py-2 px-3">DELTONA, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841197</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3702</td>
+          <td class="py-2 px-3">JACKSONVILLE, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841198</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4260</td>
+          <td class="py-2 px-3">PORT ST LUCIE, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841199</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4262</td>
+          <td class="py-2 px-3">THE VILLAGES, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841200</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5455</td>
+          <td class="py-2 px-3">PALM BAY, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841201</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4801</td>
+          <td class="py-2 px-3">RIVERVIEW, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841202</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">175</td>
+          <td class="py-2 px-3">COLLIERVILLE, TN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841203</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6663</td>
+          <td class="py-2 px-3">SAGINAW, MI</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$14,901.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841204</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2891</td>
+          <td class="py-2 px-3">ODESSA, TX</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841205</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8162</td>
+          <td class="py-2 px-3">CEDAR RAPIDS, IA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">United Installers LLC</td>
+          <td class="py-2 px-3 text-right cost-data">$18,715.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1841489</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">8123</td>
+          <td class="py-2 px-3">EVANSVILLE, IN</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3">Kleenco Maintenance & Construction</td>
+          <td class="py-2 px-3 text-right cost-data">$14,901.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1842903</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">3099</td>
+          <td class="py-2 px-3">LA PALMA, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Used Cooking Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1842904</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">978</td>
+          <td class="py-2 px-3">ARKANSAS CITY, KS</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1842905</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5319</td>
+          <td class="py-2 px-3">MACARTHUR, WV</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1842906</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1560</td>
+          <td class="py-2 px-3">LAS VEGAS, NV</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">1842907</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">2334</td>
+          <td class="py-2 px-3">LANCASTER, PA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs">Auto Care Center New/Used Oil - Tank Replacement</td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">289934</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4831</td>
+          <td class="py-2 px-3">DURHAM, NC</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+              Cancelled
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs"></td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">295241</td>
+          <td class="py-2 px-3 text-xs">WATER INFRASTRUCTURE</td>
+          <td class="py-2 px-3">2638</td>
+          <td class="py-2 px-3">ASHLAND, KY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Design
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs"></td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">295242</td>
+          <td class="py-2 px-3 text-xs">WATER INFRASTRUCTURE</td>
+          <td class="py-2 px-3">748</td>
+          <td class="py-2 px-3">NEWTON, IA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Design
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs"></td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">296184</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">1461</td>
+          <td class="py-2 px-3">ROCK SPRINGS, WY</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs"></td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">296185</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6403</td>
+          <td class="py-2 px-3">BRANDON, FL</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs"></td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">296186</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">6344</td>
+          <td class="py-2 px-3">DES MOINES, IA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs"></td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">296187</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">5601</td>
+          <td class="py-2 px-3">HUNTINGTON BEACH, CA</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs"></td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr><tr class="border-b border-gray-100 hover:bg-gray-50">
+          <td class="py-2 px-3 font-medium text-blue-700">296188</td>
+          <td class="py-2 px-3 text-xs">EQUIPMENT REPLACEMENT</td>
+          <td class="py-2 px-3">4625</td>
+          <td class="py-2 px-3">GARDEN CITY, KS</td>
+          <td class="py-2 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+              Active
+            </span>
+          </td>
+          <td class="py-2 px-3 text-xs"></td>
+          <td class="py-2 px-3"></td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+          <td class="py-2 px-3 text-right cost-data">$0.00</td>
+        </tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bottom Analysis -->
+    <div class="bg-blue-50 rounded-xl border border-blue-200 p-6">
+      <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+        <span class="text-[#0053e2]">💡</span> Recommendations for Leadership
+      </h2>
+      <ul class="space-y-2 text-sm leading-relaxed">
+        <li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span>
+          <span>Review the <strong>$236K</strong> give-back opportunity from completed projects with open PO balances to recapture budget.</span></li>
+        <li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span>
+          <span>Focus invoice reconciliation on the <strong>290 active POs</strong> to reduce the remaining-to-invoice backlog.</span></li>
+        <li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span>
+          <span>Consider consolidating contractor assignments — the top 3 contractors handle the majority of projects, presenting negotiation leverage.</span></li>
+        <li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span>
+          <span>This report reflects a point-in-time snapshot. For live data, access the full dashboard application or re-run the export.</span></li>
+      </ul>
+    </div>
+
+  </main>
+
+  <footer class="bg-white border-t border-gray-200 mt-12 py-6 print:hidden">
+    <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
+      Facility Services · Lucernex + SAP Integration · Generated February 12, 2026 at 04:02 PM · Built with 🐶 Code Puppy
+    </div>
+  </footer>
+
+  <script>
+    // ── Chart.js init ──────────────────────────────────────────────
+    const WM_BLUE = '#0053e2';
+    const WM_SPARK = '#ffc220';
+    const WM_GREEN = '#2a8703';
+    const WM_RED = '#ea1100';
+    const PALETTE = [WM_BLUE, WM_SPARK, WM_GREEN, WM_RED, '#80a9f1', '#ffe18f', '#995213', '#cccccc'];
+    Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+
+    const byType = [{"project_type": "PLBG EQUIPMENT REPLACEMENT", "cnt": 191}, {"project_type": "PLBG SANITARY/GREASE INFRASTRUCTURE", "cnt": 4}, {"project_type": "PLBG WATER INFRASTRUCTURE", "cnt": 2}];
+    new Chart(document.getElementById('chartByType'), {
+      type: 'doughnut',
+      data: {
+        labels: byType.map(d => d.project_type.replace('PLBG ', '')),
+        datasets: [{
+          data: byType.map(d => d.cnt),
+          backgroundColor: PALETTE.slice(0, byType.length),
+          borderWidth: 2, borderColor: '#fff'
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    const byStatus = [{"project_status": "Active", "cnt": 149}, {"project_status": "Financial Closeout", "cnt": 37}, {"project_status": "Cancelled", "cnt": 5}, {"project_status": "Due Diligence", "cnt": 2}, {"project_status": "Design", "cnt": 2}, {"project_status": "Construction Complete", "cnt": 1}, {"project_status": "Complete", "cnt": 1}];
+    const statusColors = { 'Active': WM_GREEN, 'Complete': WM_BLUE, 'On Hold': WM_SPARK, 'Cancelled': WM_RED };
+    new Chart(document.getElementById('chartByStatus'), {
+      type: 'doughnut',
+      data: {
+        labels: byStatus.map(d => d.project_status),
+        datasets: [{
+          data: byStatus.map(d => d.cnt),
+          backgroundColor: byStatus.map(d => statusColors[d.project_status] || '#ccc'),
+          borderWidth: 2, borderColor: '#fff'
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    const budgetData = [{"project_type": "PLBG SANITARY/GREASE INFRASTRUCTURE", "budget_total": 817796.57, "budget_actuals": 408591.0, "budget_committed": 0.0, "budget_open": 409205.57}, {"project_type": "PLBG EQUIPMENT REPLACEMENT", "budget_total": 778309.63, "budget_actuals": 292916.44, "budget_committed": 0.0, "budget_open": 485393.19}, {"project_type": "PLBG WATER INFRASTRUCTURE", "budget_total": 0, "budget_actuals": 0, "budget_committed": 0, "budget_open": 0}];
+    new Chart(document.getElementById('chartBudget'), {
+      type: 'bar',
+      data: {
+        labels: budgetData.map(d => d.project_type.replace('PLBG ', '')),
+        datasets: [
+          { label: 'Actuals', data: budgetData.map(d => d.budget_actuals), backgroundColor: WM_BLUE },
+          { label: 'Committed', data: budgetData.map(d => d.budget_committed), backgroundColor: WM_SPARK },
+          { label: 'Open', data: budgetData.map(d => d.budget_open), backgroundColor: '#80a9f1' },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          x: { stacked: true, grid: { display: false } },
+          y: { stacked: true, ticks: { callback: v => '$' + (v / 1000).toFixed(0) + 'K' } }
+        },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+
+    // ── Cost toggle ─────────────────────────────────────────────────────
+    function toggleCosts() {
+      const body = document.body;
+      const btn = document.getElementById('cost-toggle');
+      const dot = document.getElementById('cost-toggle-dot');
+      const label = document.getElementById('cost-toggle-label');
+      const hidden = body.classList.toggle('costs-hidden');
+      btn.setAttribute('aria-checked', !hidden);
+      dot.classList.toggle('translate-x-4', !hidden);
+      dot.classList.toggle('translate-x-0.5', hidden);
+      btn.classList.toggle('bg-white/30', !hidden);
+      btn.classList.toggle('bg-red-400/60', hidden);
+      label.textContent = hidden ? 'OFF' : 'ON';
+      label.classList.toggle('text-white/90', !hidden);
+      label.classList.toggle('text-red-200', hidden);
+      sessionStorage.setItem('costsHidden', hidden ? '1' : '0');
+    }
+    (function() {
+      if (sessionStorage.getItem('costsHidden') === '1') { toggleCosts(); }
+    })();
+
+    // ── Client-side table sort ─────────────────────────────────────────
+    let sortDir = {};
+    function sortTable(colIdx) {
+      const table = document.getElementById('projectsTable');
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      sortDir[colIdx] = !sortDir[colIdx];
+      const dir = sortDir[colIdx] ? 1 : -1;
+      rows.sort((a, b) => {
+        let aVal = a.cells[colIdx].textContent.trim();
+        let bVal = b.cells[colIdx].textContent.trim();
+        const aNum = parseFloat(aVal.replace(/[$,]/g, ''));
+        const bNum = parseFloat(bVal.replace(/[$,]/g, ''));
+        if (!isNaN(aNum) && !isNaN(bNum)) return (aNum - bNum) * dir;
+        return aVal.localeCompare(bVal) * dir;
+      });
+      rows.forEach(r => tbody.appendChild(r));
+    }
+  </script>
+</body>
+</html>

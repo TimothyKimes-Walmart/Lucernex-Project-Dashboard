@@ -87,12 +87,12 @@
       <div>
         <div class="flex justify-between text-sm mb-1">
           <span class="text-walmart-gray-100">Total Budget</span>
-          <span class="font-bold text-lg">{{ project.budget.budget_total | currency }}</span>
+          <span class="font-bold text-lg cost-data">{{ project.budget.budget_total | currency }}</span>
         </div>
       </div>
       {% set pct_actuals = (project.budget.budget_actuals / project.budget.budget_total * 100) if project.budget.budget_total else 0 %}
       {% set pct_committed = (project.budget.budget_committed / project.budget.budget_total * 100) if project.budget.budget_total else 0 %}
-      <div class="w-full bg-walmart-gray-10 rounded-full h-4 overflow-hidden flex" role="progressbar"
+      <div class="w-full bg-walmart-gray-10 rounded-full h-4 overflow-hidden flex cost-data" role="progressbar"
            aria-valuenow="{{ pct_actuals | int }}" aria-valuemin="0" aria-valuemax="100">
         <div class="bg-walmart-blue-100 h-full" style="width: {{ pct_actuals }}%" title="Actuals"></div>
         <div class="bg-walmart-spark-100 h-full" style="width: {{ pct_committed }}%" title="Committed"></div>
@@ -105,15 +105,15 @@
       <dl class="grid grid-cols-3 gap-4 pt-4 border-t border-walmart-gray-10 text-sm">
         <div>
           <dt class="text-walmart-gray-100 text-xs">Actuals</dt>
-          <dd class="font-bold text-walmart-blue-100">{{ project.budget.budget_actuals | currency }}</dd>
+          <dd class="font-bold text-walmart-blue-100 cost-data">{{ project.budget.budget_actuals | currency }}</dd>
         </div>
         <div>
           <dt class="text-walmart-gray-100 text-xs">Committed</dt>
-          <dd class="font-bold text-walmart-spark-140">{{ project.budget.budget_committed | currency }}</dd>
+          <dd class="font-bold text-walmart-spark-140 cost-data">{{ project.budget.budget_committed | currency }}</dd>
         </div>
         <div>
           <dt class="text-walmart-gray-100 text-xs">Open</dt>
-          <dd class="font-bold text-walmart-green-100">{{ project.budget.budget_open | currency }}</dd>
+          <dd class="font-bold text-walmart-green-100 cost-data">{{ project.budget.budget_open | currency }}</dd>
         </div>
       </dl>
     </div>
@@ -226,9 +226,9 @@
               {{ po.po_status }}
             </span>
           </td>
-          <td class="py-3 px-3 text-right">{{ po.po_total | currency }}</td>
-          <td class="py-3 px-3 text-right">{{ po.invoiced_to_date | currency }}</td>
-          <td class="py-3 px-3 text-right font-medium
+          <td class="py-3 px-3 text-right cost-data">{{ po.po_total | currency }}</td>
+          <td class="py-3 px-3 text-right cost-data">{{ po.invoiced_to_date | currency }}</td>
+          <td class="py-3 px-3 text-right font-medium cost-data
             {% if po.remaining_to_invoice > 0 %}text-walmart-spark-140{% else %}text-walmart-green-100{% endif %}">
             {{ po.remaining_to_invoice | currency }}
           </td>

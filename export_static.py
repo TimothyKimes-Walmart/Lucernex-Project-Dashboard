@@ -246,7 +246,7 @@ def _build_html(
         contractor_rows += f"""<tr class="border-b border-gray-100 hover:bg-gray-50">
           <td class="py-2 px-3">{gc['general_contractor'] or 'Unassigned'}</td>
           <td class="py-2 px-3 text-right font-medium">{gc['project_count']}</td>
-          <td class="py-2 px-3 text-right">{_fmt(gc['total_budget'])}</td>
+          <td class="py-2 px-3 text-right cost-data">{_fmt(gc['total_budget'])}</td>
         </tr>"""
 
     # Build PO status rows
@@ -264,7 +264,7 @@ def _build_html(
             </span>
           </td>
           <td class="py-2 px-3 text-right font-medium">{po['cnt']}</td>
-          <td class="py-2 px-3 text-right">{_fmt(po['total'])}</td>
+          <td class="py-2 px-3 text-right cost-data">{_fmt(po['total'])}</td>
         </tr>"""
 
     # Build projects table rows
@@ -291,8 +291,8 @@ def _build_html(
           </td>
           <td class="py-2 px-3 text-xs">{scope}</td>
           <td class="py-2 px-3">{p['general_contractor'] or ''}</td>
-          <td class="py-2 px-3 text-right">{_fmt(p['budget_total'])}</td>
-          <td class="py-2 px-3 text-right">{_fmt(p['budget_actuals'])}</td>
+          <td class="py-2 px-3 text-right cost-data">{_fmt(p['budget_total'])}</td>
+          <td class="py-2 px-3 text-right cost-data">{_fmt(p['budget_actuals'])}</td>
         </tr>"""
 
     # Insights HTML
@@ -311,6 +311,9 @@ def _build_html(
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     body {{ font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }}
+    body.costs-hidden .cost-data {{ filter: blur(8px); user-select: none; pointer-events: none; }}
+    body.costs-hidden .cost-chart {{ filter: blur(12px); user-select: none; pointer-events: none; }}
+    body.costs-hidden .cost-hide {{ display: none !important; }}
     @media print {{ nav, footer {{ display: none; }} main {{ padding: 0 !important; }} }}
   </style>
 </head>
@@ -324,7 +327,20 @@ def _build_html(
           <span class="text-[#ffc220] text-2xl font-bold">✦</span>
           <span class="text-lg font-bold tracking-tight">Plumbing Projects Dashboard</span>
         </div>
-        <div class="text-sm opacity-80">Static Report · Generated {generated_at}</div>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <label for="cost-toggle" class="text-xs text-white/70 cursor-pointer select-none">Costs</label>
+            <button id="cost-toggle" onclick="toggleCosts()" role="switch" aria-checked="true"
+                    aria-label="Toggle cost visibility"
+                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                           bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50">
+              <span id="cost-toggle-dot"
+                    class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform translate-x-4"></span>
+            </button>
+            <span id="cost-toggle-label" class="text-xs font-medium text-white/90">ON</span>
+          </div>
+          <span class="text-sm opacity-80">Static Report \u00b7 Generated {generated_at}</span>
+        </div>
       </div>
     </div>
   </nav>
@@ -350,12 +366,12 @@ def _build_html(
       </div>
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Budget</p>
-        <p class="text-3xl font-bold text-[#0053e2] mt-1">{_fmt(stats['total_budget'])}</p>
-        <p class="text-sm text-gray-500 mt-1">{_fmt(stats['total_actuals'])} spent</p>
+        <p class="text-3xl font-bold text-[#0053e2] mt-1 cost-data">{_fmt(stats['total_budget'])}</p>
+        <p class="text-sm text-gray-500 mt-1 cost-data">{_fmt(stats['total_actuals'])} spent</p>
       </div>
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Remaining to Invoice</p>
-        <p class="text-3xl font-bold text-[#995213] mt-1">{_fmt(stats['remaining_to_invoice'])}</p>
+        <p class="text-3xl font-bold text-[#995213] mt-1 cost-data">{_fmt(stats['remaining_to_invoice'])}</p>
         <p class="text-sm text-gray-500 mt-1">{stats['total_pos']} purchase orders</p>
       </div>
     </div>
@@ -373,7 +389,7 @@ def _build_html(
     </div>
 
     <!-- Charts Row 2 -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8 cost-chart">
       <h2 class="text-lg font-semibold mb-4">Budget Breakdown by Project Type</h2>
       <div style="height: 350px;"><canvas id="chartBudget"></canvas></div>
     </div>
@@ -520,7 +536,28 @@ def _build_html(
       }}
     }});
 
-    // ── Client-side table sort ─────────────────────────────────────
+    // ── Cost toggle ─────────────────────────────────────────────────────
+    function toggleCosts() {{
+      const body = document.body;
+      const btn = document.getElementById('cost-toggle');
+      const dot = document.getElementById('cost-toggle-dot');
+      const label = document.getElementById('cost-toggle-label');
+      const hidden = body.classList.toggle('costs-hidden');
+      btn.setAttribute('aria-checked', !hidden);
+      dot.classList.toggle('translate-x-4', !hidden);
+      dot.classList.toggle('translate-x-0.5', hidden);
+      btn.classList.toggle('bg-white/30', !hidden);
+      btn.classList.toggle('bg-red-400/60', hidden);
+      label.textContent = hidden ? 'OFF' : 'ON';
+      label.classList.toggle('text-white/90', !hidden);
+      label.classList.toggle('text-red-200', hidden);
+      sessionStorage.setItem('costsHidden', hidden ? '1' : '0');
+    }}
+    (function() {{
+      if (sessionStorage.getItem('costsHidden') === '1') {{ toggleCosts(); }}
+    }})();
+
+    // ── Client-side table sort ─────────────────────────────────────────
     let sortDir = {{}};
     function sortTable(colIdx) {{
       const table = document.getElementById('projectsTable');

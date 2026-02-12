@@ -7,12 +7,12 @@
   </div>
   <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
     <p class="text-sm font-medium text-walmart-gray-100 uppercase tracking-wide">Total Budget</p>
-    <p class="text-3xl font-bold text-walmart-blue-100 mt-1">{{ stats.total_budget | currency }}</p>
-    <p class="text-sm text-walmart-gray-100 mt-1">{{ stats.total_actuals | currency }} spent</p>
+    <p class="text-3xl font-bold text-walmart-blue-100 mt-1 cost-data">{{ stats.total_budget | currency }}</p>
+    <p class="text-sm text-walmart-gray-100 mt-1 cost-data">{{ stats.total_actuals | currency }} spent</p>
   </div>
   <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
     <p class="text-sm font-medium text-walmart-gray-100 uppercase tracking-wide">Remaining to Invoice</p>
-    <p class="text-3xl font-bold text-walmart-spark-140 mt-1">{{ stats.remaining_to_invoice | currency }}</p>
+    <p class="text-3xl font-bold text-walmart-spark-140 mt-1 cost-data">{{ stats.remaining_to_invoice | currency }}</p>
     <p class="text-sm text-walmart-gray-100 mt-1">{{ stats.total_pos }} purchase orders</p>
   </div>
 </div>
@@ -35,7 +35,7 @@
 
 <!-- Charts Row 2 -->
 <div class="grid grid-cols-1 gap-6 mb-8">
-  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6 cost-chart">
     <h2 class="text-lg font-semibold mb-4">Budget Breakdown by Project Type</h2>
     <div style="height: 350px;">
       <canvas id="chartBudget"></canvas>
@@ -62,7 +62,7 @@
           <tr class="border-b border-walmart-gray-10 hover:bg-walmart-gray-5 transition-colors">
             <td class="py-2 px-3">{{ gc.general_contractor }}</td>
             <td class="py-2 px-3 text-right font-medium">{{ gc.project_count }}</td>
-            <td class="py-2 px-3 text-right">{{ gc.total_budget | currency }}</td>
+            <td class="py-2 px-3 text-right cost-data">{{ gc.total_budget | currency }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -94,7 +94,7 @@
               </span>
             </td>
             <td class="py-2 px-3 text-right font-medium">{{ po.cnt }}</td>
-            <td class="py-2 px-3 text-right">{{ po.total | currency }}</td>
+            <td class="py-2 px-3 text-right cost-data">{{ po.total | currency }}</td>
           </tr>
           {% endfor %}
         </tbody>

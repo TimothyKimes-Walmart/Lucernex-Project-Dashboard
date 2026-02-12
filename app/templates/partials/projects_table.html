@@ -111,8 +111,8 @@
           —
         {% endif %}
       </td>
-      <td class="py-2 px-2 text-right whitespace-nowrap">{{ p.budget_total | currency }}</td>
-      <td class="py-2 px-2 text-right whitespace-nowrap">{{ p.budget_actuals | currency }}</td>
+      <td class="py-2 px-2 text-right whitespace-nowrap cost-data">{{ p.budget_total | currency }}</td>
+      <td class="py-2 px-2 text-right whitespace-nowrap cost-data">{{ p.budget_actuals | currency }}</td>
     </tr>
     {% else %}
     <tr>
