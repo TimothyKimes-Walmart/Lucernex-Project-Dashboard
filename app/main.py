@@ -25,6 +25,7 @@ from queries import (
     get_projects_by_type,
     get_summary_stats,
     get_top_contractors,
+    get_wbs_node_budgets,
 )
 
 from routes_po import router as po_router
@@ -63,6 +64,8 @@ def _dashboard_context(request: Request, search: str | None = None) -> dict:
     contractors = get_top_contractors(search=search)
     po_summary = get_po_status_summary(search=search)
 
+    wbs_nodes = get_wbs_node_budgets()
+
     return {
         "request": request,
         "stats": stats,
@@ -71,6 +74,7 @@ def _dashboard_context(request: Request, search: str | None = None) -> dict:
         "budget_by_type_json": json.dumps(budget_by_type),
         "contractors": contractors,
         "po_summary": po_summary,
+        "wbs_nodes": wbs_nodes,
         "search": search or "",
     }
 

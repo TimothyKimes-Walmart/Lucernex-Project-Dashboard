@@ -1,0 +1,137 @@
+<!-- SAP WBS Node Fund Overview -->
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold flex items-center gap-2">
+      <svg class="w-5 h-5 text-walmart-blue-100" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+      </svg>
+      SAP Fund Overview by Node
+    </h2>
+    {% if wbs_nodes and wbs_nodes[0].last_updated %}
+    <span class="text-xs text-walmart-gray-100">Updated: {{ wbs_nodes[0].last_updated }}</span>
+    {% endif %}
+  </div>
+
+  {% if wbs_nodes %}
+  <div class="grid grid-cols-1 lg:grid-cols-{{ wbs_nodes | length }} gap-4 mb-6">
+    {% for node in wbs_nodes %}
+    <div class="rounded-lg border {% if node.current_budget > 0 %}border-walmart-blue-100/20 bg-walmart-blue-10/30{% else %}border-walmart-gray-50 bg-walmart-gray-5{% endif %} p-4">
+      <!-- Node Header -->
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <p class="text-sm font-bold text-walmart-gray-160">{{ node.node_label }}</p>
+          <p class="text-xs text-walmart-gray-100 font-mono">{{ node.node_key }}</p>
+        </div>
+        {% if node.current_budget > 0 %}
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-walmart-green-10 text-walmart-green-100">
+          {{ node.project_count }} projects
+        </span>
+        {% else %}
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-walmart-gray-10 text-walmart-gray-100">
+          No data
+        </span>
+        {% endif %}
+      </div>
+
+      {% if node.current_budget > 0 %}
+      <!-- Budget Bar -->
+      {% set pct_spent = (node.actuals / node.current_budget * 100) if node.current_budget else 0 %}
+      {% set pct_committed = (node.open_commitments / node.current_budget * 100) if node.current_budget else 0 %}
+      {% set pct_available = (node.budget_available / node.current_budget * 100) if node.current_budget else 0 %}
+
+      <div class="w-full bg-walmart-gray-10 rounded-full h-3 overflow-hidden flex mb-3" role="progressbar"
+           aria-valuenow="{{ pct_spent | int }}" aria-valuemin="0" aria-valuemax="100"
+           title="Spent: {{ pct_spent | int }}% | Committed: {{ pct_committed | int }}% | Available: {{ pct_available | int }}%">
+        <div class="bg-walmart-blue-100 h-full transition-all" style="width: {{ pct_spent }}%"></div>
+        <div class="bg-walmart-spark-100 h-full transition-all" style="width: {{ pct_committed }}%"></div>
+      </div>
+      <div class="flex justify-between text-[10px] text-walmart-gray-100 mb-3">
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-walmart-blue-100 inline-block"></span>Spent {{ pct_spent | int }}%</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-walmart-spark-100 inline-block"></span>Committed {{ pct_committed | int }}%</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-walmart-gray-10 inline-block border"></span>Available {{ pct_available | int }}%</span>
+      </div>
+
+      <!-- Fund Details -->
+      <dl class="space-y-1.5 text-xs">
+        <div class="flex justify-between">
+          <dt class="text-walmart-gray-100">Current Budget</dt>
+          <dd class="font-bold text-walmart-gray-160 cost-data">{{ node.current_budget | currency }}</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-walmart-gray-100">Actuals (Spent)</dt>
+          <dd class="font-semibold text-walmart-blue-100 cost-data">{{ node.actuals | currency }}</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-walmart-gray-100">Open Commitments</dt>
+          <dd class="font-semibold text-walmart-spark-140 cost-data">{{ node.open_commitments | currency }}</dd>
+        </div>
+        <div class="flex justify-between border-t border-walmart-gray-10 pt-1.5">
+          <dt class="text-walmart-gray-100 font-medium">Available</dt>
+          <dd class="font-bold cost-data {% if node.budget_available > 0 %}text-walmart-green-100{% else %}text-walmart-red-100{% endif %}">
+            {{ node.budget_available | currency }}
+          </dd>
+        </div>
+      </dl>
+
+      <!-- Budget Movement -->
+      {% if node.supplemental_budget != 0 or node.returned_budget != 0 %}
+      <details class="mt-3 text-xs">
+        <summary class="cursor-pointer text-walmart-blue-100 hover:underline font-medium">Budget movements</summary>
+        <dl class="space-y-1 mt-2 pl-2 border-l-2 border-walmart-blue-10">
+          <div class="flex justify-between">
+            <dt class="text-walmart-gray-100">Original Budget</dt>
+            <dd class="cost-data">{{ node.original_budget | currency }}</dd>
+          </div>
+          {% if node.supplemental_budget != 0 %}
+          <div class="flex justify-between">
+            <dt class="text-walmart-gray-100">Supplemental</dt>
+            <dd class="text-walmart-green-100 cost-data">+{{ node.supplemental_budget | currency }}</dd>
+          </div>
+          {% endif %}
+          {% if node.returned_budget != 0 %}
+          <div class="flex justify-between">
+            <dt class="text-walmart-gray-100">Returned</dt>
+            <dd class="text-walmart-red-100 cost-data">{{ node.returned_budget | currency }}</dd>
+          </div>
+          {% endif %}
+        </dl>
+      </details>
+      {% endif %}
+
+      {% else %}
+      <p class="text-xs text-walmart-gray-100 italic">Node not found in SAP budget hierarchy. It may not be set up yet or could exist under a different path.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Cross-node totals -->
+  {% set total_budget = wbs_nodes | selectattr('current_budget') | map(attribute='current_budget') | sum %}
+  {% set total_spent = wbs_nodes | selectattr('actuals') | map(attribute='actuals') | sum %}
+  {% set total_committed = wbs_nodes | selectattr('open_commitments') | map(attribute='open_commitments') | sum %}
+  {% set total_available = wbs_nodes | selectattr('budget_available') | map(attribute='budget_available') | sum %}
+  {% if total_budget > 0 %}
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-walmart-gray-50">
+    <div class="text-center">
+      <p class="text-xs text-walmart-gray-100 font-semibold uppercase">Combined Budget</p>
+      <p class="text-lg font-bold text-walmart-gray-160 cost-data">{{ total_budget | currency }}</p>
+    </div>
+    <div class="text-center">
+      <p class="text-xs text-walmart-gray-100 font-semibold uppercase">Total Spent</p>
+      <p class="text-lg font-bold text-walmart-blue-100 cost-data">{{ total_spent | currency }}</p>
+    </div>
+    <div class="text-center">
+      <p class="text-xs text-walmart-gray-100 font-semibold uppercase">Total Committed</p>
+      <p class="text-lg font-bold text-walmart-spark-140 cost-data">{{ total_committed | currency }}</p>
+    </div>
+    <div class="text-center">
+      <p class="text-xs text-walmart-gray-100 font-semibold uppercase">Total Available</p>
+      <p class="text-lg font-bold cost-data {% if total_available > 0 %}text-walmart-green-100{% else %}text-walmart-red-100{% endif %}">{{ total_available | currency }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <p class="text-walmart-gray-100 text-sm">No WBS node data available. Run a data refresh to pull from SAP.</p>
+  {% endif %}
+</div>

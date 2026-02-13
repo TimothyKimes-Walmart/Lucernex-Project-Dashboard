@@ -465,6 +465,89 @@ def pull_comment_referenced_pos(
     return recovered
 
 
+# ── WBS node-level budget pull ──────────────────────────────────────
+
+# SAP WBS nodes we track for plumbing fund overview.
+WBS_NODES = {
+    "WMUS.SG.FAC.UP.PLB": "Plumbing",
+    "WMUS.SG.FAC.UP.TANK": "Tanks",
+    "WMUS.SG.FAC.UP.LIFT": "Lift Stations",
+}
+
+
+def pull_wbs_node_budgets(client: bigquery.Client) -> list[dict]:
+    """Pull aggregated budget data for tracked WBS program positions."""
+    node_keys = ", ".join(f"'{k}'" for k in WBS_NODES)
+    query = f"""
+        SELECT
+            program_position,
+            MAX(description) AS description,
+            COUNT(DISTINCT project_definition) AS project_count,
+            SUM(CAST(original_budget AS FLOAT64)) AS original_budget,
+            SUM(CAST(supplement AS FLOAT64)) AS supplemental_budget,
+            SUM(CAST(retrn AS FLOAT64)) AS returned_budget,
+            SUM(CAST(current_budget AS FLOAT64)) AS current_budget,
+            SUM(CAST(actual AS FLOAT64)) AS actuals,
+            SUM(CAST(commitment AS FLOAT64)) AS open_commitments,
+            SUM(CAST(budget_avail AS FLOAT64)) AS budget_available,
+            SUM(CAST(distributed_budget AS FLOAT64)) AS distributed_budget
+        FROM `re-ods-prod.us_re_ods_prod_pub.vw_rps_rb0224_us_report`
+        WHERE UPPER(program_position) IN ({node_keys})
+        GROUP BY program_position
+    """
+    print("Pulling WBS node budgets from RB0224 report...")
+    results = client.query(query).result()
+    rows = [dict(row) for row in results]
+    print(f"  Found data for {len(rows)} of {len(WBS_NODES)} tracked nodes")
+    return rows
+
+
+def load_wbs_nodes(nodes: list[dict]) -> None:
+    """Upsert WBS node budget data into SQLite."""
+    conn = get_db()
+    conn.execute("DELETE FROM sap_wbs_nodes")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    for n in nodes:
+        key = n["program_position"].upper()
+        conn.execute(
+            """INSERT OR REPLACE INTO sap_wbs_nodes
+               (node_key, node_label, description, original_budget,
+                supplemental_budget, returned_budget, current_budget,
+                actuals, open_commitments, budget_available,
+                distributed_budget, project_count, last_updated)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                key, WBS_NODES.get(key, key), n.get("description", ""),
+                n.get("original_budget", 0) or 0,
+                n.get("supplemental_budget", 0) or 0,
+                n.get("returned_budget", 0) or 0,
+                n.get("current_budget", 0) or 0,
+                n.get("actuals", 0) or 0,
+                n.get("open_commitments", 0) or 0,
+                n.get("budget_available", 0) or 0,
+                n.get("distributed_budget", 0) or 0,
+                n.get("project_count", 0) or 0,
+                now,
+            ),
+        )
+
+    # Insert placeholder for nodes not found in BQ (like LIFT)
+    found_keys = {n["program_position"].upper() for n in nodes}
+    for key, label in WBS_NODES.items():
+        if key not in found_keys:
+            conn.execute(
+                """INSERT OR IGNORE INTO sap_wbs_nodes
+                   (node_key, node_label, description, last_updated)
+                   VALUES (?, ?, ?, ?)""",
+                (key, label, "Not found in SAP", now),
+            )
+
+    conn.commit()
+    conn.close()
+    print(f"  Loaded {len(nodes)} WBS node budgets")
+
+
 # BQ source tables and their freshness queries.
 _SOURCE_FRESHNESS = {
     "lucernex_projects": {
@@ -547,6 +630,10 @@ def run_etl() -> None:
     print(f"  Merged {comment_new} comment-referenced POs (total POs: {len(pos)})")
 
     load_to_sqlite(projects, pos)
+
+    # Pull WBS node-level budget data.
+    wbs_nodes = pull_wbs_node_budgets(client)
+    load_wbs_nodes(wbs_nodes)
 
     # Record source freshness + local refresh timestamp.
     _record_refresh_metadata(client)

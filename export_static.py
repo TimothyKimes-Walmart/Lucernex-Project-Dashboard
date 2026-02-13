@@ -131,14 +131,11 @@ def _query_give_back_summary(conn: sqlite3.Connection) -> dict:
     return dict(row)
 
 
-def _query_status_by_type_matrix(conn: sqlite3.Connection) -> list[dict]:
-    """Status breakdown per project type for the analysis section."""
-    rows = conn.execute("""
-        SELECT project_type, project_status, COUNT(*) as cnt
-        FROM projects
-        GROUP BY project_type, project_status
-        ORDER BY project_type, cnt DESC
-    """).fetchall()
+def _query_wbs_nodes(conn: sqlite3.Connection) -> list[dict]:
+    """Return WBS node budget data."""
+    rows = conn.execute(
+        "SELECT * FROM sap_wbs_nodes ORDER BY node_key"
+    ).fetchall()
     return [dict(r) for r in rows]
 
 
@@ -225,6 +222,84 @@ def _generate_insights(
 
 # ── HTML builder ─────────────────────────────────────────────────────
 
+def _build_wbs_nodes_html(wbs_nodes: list[dict]) -> str:
+    """Build the SAP WBS node fund overview HTML cards."""
+    if not wbs_nodes:
+        return '<p class="text-gray-500 text-sm">No WBS node data available.</p>'
+
+    cards = ""
+    for node in wbs_nodes:
+        has_data = (node.get("current_budget") or 0) > 0
+        pct_spent = (node["actuals"] / node["current_budget"] * 100) if has_data else 0
+        pct_committed = (node["open_commitments"] / node["current_budget"] * 100) if has_data else 0
+        pct_available = (node["budget_available"] / node["current_budget"] * 100) if has_data else 0
+
+        border_cls = "border-blue-200 bg-blue-50/30" if has_data else "border-gray-200 bg-gray-50"
+        avail_cls = "text-green-700" if (node.get("budget_available") or 0) > 0 else "text-red-600"
+
+        movements = ""
+        if has_data and (node.get("supplemental_budget", 0) != 0 or node.get("returned_budget", 0) != 0):
+            supp = f'<div class="flex justify-between"><dt class="text-gray-500">Supplemental</dt><dd class="text-green-700 cost-data">+{_fmt(node["supplemental_budget"])}</dd></div>' if node.get("supplemental_budget", 0) != 0 else ""
+            ret = f'<div class="flex justify-between"><dt class="text-gray-500">Returned</dt><dd class="text-red-600 cost-data">{_fmt(node["returned_budget"])}</dd></div>' if node.get("returned_budget", 0) != 0 else ""
+            movements = f"""<details class="mt-3 text-xs">
+              <summary class="cursor-pointer text-blue-600 hover:underline font-medium">Budget movements</summary>
+              <dl class="space-y-1 mt-2 pl-2 border-l-2 border-blue-100">
+                <div class="flex justify-between"><dt class="text-gray-500">Original Budget</dt><dd class="cost-data">{_fmt(node["original_budget"])}</dd></div>
+                {supp}{ret}
+              </dl>
+            </details>"""
+
+        if has_data:
+            content = f"""<div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden flex mb-3">
+                <div class="bg-[#0053e2] h-full" style="width: {pct_spent}%"></div>
+                <div class="bg-[#ffc220] h-full" style="width: {pct_committed}%"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-gray-500 mb-3">
+                <span>Spent {pct_spent:.0f}%</span>
+                <span>Committed {pct_committed:.0f}%</span>
+                <span>Available {pct_available:.0f}%</span>
+              </div>
+              <dl class="space-y-1.5 text-xs">
+                <div class="flex justify-between"><dt class="text-gray-500">Current Budget</dt><dd class="font-bold cost-data">{_fmt(node['current_budget'])}</dd></div>
+                <div class="flex justify-between"><dt class="text-gray-500">Actuals (Spent)</dt><dd class="font-semibold text-blue-700 cost-data">{_fmt(node['actuals'])}</dd></div>
+                <div class="flex justify-between"><dt class="text-gray-500">Open Commitments</dt><dd class="font-semibold text-yellow-700 cost-data">{_fmt(node['open_commitments'])}</dd></div>
+                <div class="flex justify-between border-t border-gray-200 pt-1.5"><dt class="text-gray-500 font-medium">Available</dt><dd class="font-bold {avail_cls} cost-data">{_fmt(node['budget_available'])}</dd></div>
+              </dl>
+              {movements}"""
+        else:
+            content = '<p class="text-xs text-gray-400 italic">Node not found in SAP budget hierarchy.</p>'
+
+        status_badge = f'<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">{node["project_count"]} projects</span>' if has_data else '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">No data</span>'
+
+        cards += f"""<div class="rounded-lg border {border_cls} p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div><p class="text-sm font-bold">{node['node_label']}</p><p class="text-xs text-gray-500 font-mono">{node['node_key']}</p></div>
+            {status_badge}
+          </div>
+          {content}
+        </div>"""
+
+    # Cross-node totals
+    total_budget = sum(n.get("current_budget", 0) or 0 for n in wbs_nodes)
+    total_spent = sum(n.get("actuals", 0) or 0 for n in wbs_nodes)
+    total_committed = sum(n.get("open_commitments", 0) or 0 for n in wbs_nodes)
+    total_available = sum(n.get("budget_available", 0) or 0 for n in wbs_nodes)
+    avail_cls = "text-green-700" if total_available > 0 else "text-red-600"
+
+    totals = f"""<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-gray-200">
+      <div class="text-center"><p class="text-xs text-gray-500 font-semibold uppercase">Combined Budget</p><p class="text-lg font-bold cost-data">{_fmt(total_budget)}</p></div>
+      <div class="text-center"><p class="text-xs text-gray-500 font-semibold uppercase">Total Spent</p><p class="text-lg font-bold text-blue-700 cost-data">{_fmt(total_spent)}</p></div>
+      <div class="text-center"><p class="text-xs text-gray-500 font-semibold uppercase">Total Committed</p><p class="text-lg font-bold text-yellow-700 cost-data">{_fmt(total_committed)}</p></div>
+      <div class="text-center"><p class="text-xs text-gray-500 font-semibold uppercase">Total Available</p><p class="text-lg font-bold {avail_cls} cost-data">{_fmt(total_available)}</p></div>
+    </div>""" if total_budget > 0 else ""
+
+    return f"""<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+      <h2 class="text-lg font-semibold mb-4">SAP Fund Overview by Node</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-{len(wbs_nodes)} gap-4 mb-4">{cards}</div>
+      {totals}
+    </div>"""
+
+
 def _build_html(
     stats: dict,
     by_type: list[dict],
@@ -234,6 +309,7 @@ def _build_html(
     po_summary: list[dict],
     projects: list[dict],
     give_back: dict,
+    wbs_nodes: list[dict],
     generated_at: str,
 ) -> str:
     insights = _generate_insights(
@@ -375,6 +451,9 @@ def _build_html(
         <p class="text-sm text-gray-500 mt-1">{stats['total_pos']} purchase orders</p>
       </div>
     </div>
+
+    <!-- SAP WBS Node Fund Overview -->
+    {_build_wbs_nodes_html(wbs_nodes)}
 
     <!-- Charts Row 1 -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -598,6 +677,7 @@ def main() -> None:
     po_summary = _query_po_summary(conn)
     projects = _query_projects_table(conn)
     give_back = _query_give_back_summary(conn)
+    wbs_nodes = _query_wbs_nodes(conn)
     conn.close()
 
     generated_at = datetime.now().strftime("%B %d, %Y at %I:%M %p")
@@ -612,6 +692,7 @@ def main() -> None:
         po_summary=po_summary,
         projects=projects,
         give_back=give_back,
+        wbs_nodes=wbs_nodes,
         generated_at=generated_at,
     )
 

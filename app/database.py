@@ -83,6 +83,23 @@ def init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_lxdocs_folder
             ON lucernex_documents(folder_category, sub_folder);
 
+        -- SAP WBS node-level budget data (program positions).
+        CREATE TABLE IF NOT EXISTS sap_wbs_nodes (
+            node_key TEXT PRIMARY KEY,
+            node_label TEXT,
+            description TEXT,
+            original_budget REAL DEFAULT 0,
+            supplemental_budget REAL DEFAULT 0,
+            returned_budget REAL DEFAULT 0,
+            current_budget REAL DEFAULT 0,
+            actuals REAL DEFAULT 0,
+            open_commitments REAL DEFAULT 0,
+            budget_available REAL DEFAULT 0,
+            distributed_budget REAL DEFAULT 0,
+            project_count INTEGER DEFAULT 0,
+            last_updated TEXT
+        );
+
         -- Tracks when each BQ source was last updated and when we last pulled.
         CREATE TABLE IF NOT EXISTS refresh_metadata (
             source_key TEXT PRIMARY KEY,

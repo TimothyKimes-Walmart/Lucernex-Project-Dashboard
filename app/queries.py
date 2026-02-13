@@ -358,6 +358,18 @@ def get_po_status_summary(search: str | None = None) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+# ── SAP WBS Node Budgets ─────────────────────────────────────────
+
+def get_wbs_node_budgets() -> list[dict]:
+    """Return all tracked WBS node budget records."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM sap_wbs_nodes ORDER BY node_key"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 # ── Lucernex Documents ───────────────────────────────────────────────
 
 def get_project_documents_tree(project_id: str) -> list[dict]:
