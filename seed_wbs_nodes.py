@@ -34,9 +34,9 @@ NODES = [
      "budget_cf_from_prev": 0, "budget_cf_to_next": 0, "project_count": 2472},
     {"node_key": "WMUS.SG.FAC.UP.PLB", "node_label": "Plumbing", "approval_year": 2026,
      "description": "Plumbing - Unplanned",
-     "original_budget": 1_119_300, "supplemental_budget": 0, "returned_budget": 0,
-     "current_budget": 1_119_300, "actuals": 748_188, "open_commitments": 246_274,
-     "budget_available": 124_838, "distributed_budget": 0,
+     "original_budget": 9_420_610.50, "supplemental_budget": 0, "returned_budget": 0,
+     "current_budget": 9_420_610.50, "actuals": 748_188, "open_commitments": 246_274,
+     "budget_available": 8_426_148.50, "distributed_budget": 0,
      "budget_cf_from_prev": 0, "budget_cf_to_next": 0, "project_count": 14},
     # TANK by year (only 2026)
     {"node_key": "WMUS.SG.FAC.UP.TANK", "node_label": "Tanks", "approval_year": 2026,
