@@ -49,9 +49,10 @@ NODES = [
     {"node_key": "WMUS.SG.FAC.UP.PLB", "node_label": "Plumbing", "approval_year": 2026,
      "description": "Plumbing - Unplanned",
      "original_budget": 440_350.02, "supplemental_budget": 8_678_949.98,
-     "returned_budget": -8_000_000.00, "current_budget": 1_119_300.00,
+     "returned_budget": -8_000_000.00,
+     "current_budget": 9_420_610.50,  # SAP budget override (BQ current_budget=1,119,300)
      "actuals": 730_852.36, "open_commitments": 0,
-     "budget_available": 388_447.64, "distributed_budget": 98_468.29,
+     "budget_available": 8_689_758.14, "distributed_budget": 98_468.29,
      "budget_cf_from_prev": 440_350.02, "budget_cf_to_next": 0,
      "project_count": 7},
 
