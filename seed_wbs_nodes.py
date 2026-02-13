@@ -1,4 +1,4 @@
-"""Seed WBS node budget data (per fiscal year) from BigQuery results."""
+"""Seed WBS node budget data (per fiscal year) from verified BigQuery results."""
 
 import sqlite3
 from pathlib import Path
@@ -6,46 +6,66 @@ from datetime import datetime, timezone
 
 DB_PATH = Path(__file__).parent / "dashboard.db"
 
+# Exact values from vw_rps_rb0224_us_report, verified 2026-02-13.
+# Nulls from BQ are stored as 0.
 NODES = [
-    # PLB by year
+    # ── PLB by year ──────────────────────────────────────────────
     {"node_key": "WMUS.SG.FAC.UP.PLB", "node_label": "Plumbing", "approval_year": 2022,
-     "description": "Plumbing - Unplanned",
-     "original_budget": 9_510_611, "supplemental_budget": 0, "returned_budget": 0,
-     "current_budget": 9_510_611, "actuals": 7_636_398, "open_commitments": 414_713,
-     "budget_available": 1_459_500, "distributed_budget": 0,
-     "budget_cf_from_prev": 0, "budget_cf_to_next": 0, "project_count": 2221},
+     "description": "Unplanned - Plumbing",
+     "original_budget": 439_694.75, "supplemental_budget": 3_060_305.25,
+     "returned_budget": 0, "current_budget": 3_500_000.00,
+     "actuals": 3_082_157.43, "open_commitments": 0,
+     "budget_available": 417_842.57, "distributed_budget": 278_147.82,
+     "budget_cf_from_prev": 278_147.82, "budget_cf_to_next": 0,
+     "project_count": 4},
+
     {"node_key": "WMUS.SG.FAC.UP.PLB", "node_label": "Plumbing", "approval_year": 2023,
-     "description": "Plumbing - Unplanned",
-     "original_budget": 10_770_611, "supplemental_budget": 0, "returned_budget": 0,
-     "current_budget": 10_770_611, "actuals": 10_999_964, "open_commitments": 64_594,
-     "budget_available": -293_948, "distributed_budget": 0,
-     "budget_cf_from_prev": 0, "budget_cf_to_next": 0, "project_count": 3169},
+     "description": "Unplanned - Plumbing",
+     "original_budget": 278_147.82, "supplemental_budget": 4_000_000.00,
+     "returned_budget": -2_000_000.00, "current_budget": 2_278_147.82,
+     "actuals": 2_245_019.68, "open_commitments": 0,
+     "budget_available": 33_128.14, "distributed_budget": 449_593.42,
+     "budget_cf_from_prev": 449_593.42, "budget_cf_to_next": 0,
+     "project_count": 4},
+
     {"node_key": "WMUS.SG.FAC.UP.PLB", "node_label": "Plumbing", "approval_year": 2024,
-     "description": "Plumbing - Unplanned",
-     "original_budget": 18_841_221, "supplemental_budget": 0, "returned_budget": 0,
-     "current_budget": 18_841_221, "actuals": 9_610_722, "open_commitments": 35_071,
-     "budget_available": 9_195_428, "distributed_budget": 0,
-     "budget_cf_from_prev": 0, "budget_cf_to_next": 0, "project_count": 2474},
+     "description": "Unplanned - Plumbing",
+     "original_budget": 899_186.84, "supplemental_budget": 0,
+     "returned_budget": 0, "current_budget": 899_186.84,
+     "actuals": 9_548.67, "open_commitments": 0,
+     "budget_available": 889_638.17, "distributed_budget": 440_350.02,
+     "budget_cf_from_prev": 458_836.82, "budget_cf_to_next": 0,
+     "project_count": 3},
+
     {"node_key": "WMUS.SG.FAC.UP.PLB", "node_label": "Plumbing", "approval_year": 2025,
      "description": "Plumbing - Unplanned",
-     "original_budget": 9_420_611, "supplemental_budget": 0, "returned_budget": 0,
-     "current_budget": 9_420_611, "actuals": 9_621_087, "open_commitments": 0,
-     "budget_available": -200_476, "distributed_budget": 0,
-     "budget_cf_from_prev": 0, "budget_cf_to_next": 0, "project_count": 2472},
+     "original_budget": 440_350.02, "supplemental_budget": 0,
+     "returned_budget": 0, "current_budget": 440_350.02,
+     "actuals": 0, "open_commitments": 0,
+     "budget_available": 440_350.02, "distributed_budget": 0,
+     "budget_cf_from_prev": 440_350.02, "budget_cf_to_next": 0,
+     "project_count": 3},
+
     {"node_key": "WMUS.SG.FAC.UP.PLB", "node_label": "Plumbing", "approval_year": 2026,
      "description": "Plumbing - Unplanned",
-     "original_budget": 9_420_610.50, "supplemental_budget": 0, "returned_budget": 0,
-     "current_budget": 9_420_610.50, "actuals": 748_188, "open_commitments": 246_274,
-     "budget_available": 8_426_148.50, "distributed_budget": 0,
-     "budget_cf_from_prev": 0, "budget_cf_to_next": 0, "project_count": 14},
-    # TANK by year (only 2026)
+     "original_budget": 440_350.02, "supplemental_budget": 8_678_949.98,
+     "returned_budget": -8_000_000.00, "current_budget": 1_119_300.00,
+     "actuals": 730_852.36, "open_commitments": 0,
+     "budget_available": 388_447.64, "distributed_budget": 98_468.29,
+     "budget_cf_from_prev": 440_350.02, "budget_cf_to_next": 0,
+     "project_count": 7},
+
+    # ── TANK by year (only 2026) ────────────────────────────────
     {"node_key": "WMUS.SG.FAC.UP.TANK", "node_label": "Tanks", "approval_year": 2026,
      "description": "Tanks",
-     "original_budget": 0, "supplemental_budget": 8_000_000, "returned_budget": 0,
-     "current_budget": 8_000_000, "actuals": 705_079, "open_commitments": 1_491_647,
-     "budget_available": 5_803_274, "distributed_budget": 2_206_872,
-     "budget_cf_from_prev": 0, "budget_cf_to_next": 0, "project_count": 152},
-    # LIFT — placeholder for all PLB years
+     "original_budget": 0, "supplemental_budget": 8_000_000.00,
+     "returned_budget": 0, "current_budget": 8_000_000.00,
+     "actuals": 620_420.82, "open_commitments": 0,
+     "budget_available": 7_379_579.18, "distributed_budget": 2_206_272.00,
+     "budget_cf_from_prev": 0, "budget_cf_to_next": 0,
+     "project_count": 76},
+
+    # ── LIFT — not found in SAP, placeholders ───────────────────
     {"node_key": "WMUS.SG.FAC.UP.LIFT", "node_label": "Lift Stations", "approval_year": 2022,
      "description": "Not found in SAP",
      "original_budget": 0, "supplemental_budget": 0, "returned_budget": 0,
@@ -81,7 +101,6 @@ NODES = [
 
 def main() -> None:
     conn = sqlite3.connect(str(DB_PATH))
-    # Drop and recreate to match new schema.
     conn.execute("DROP TABLE IF EXISTS sap_wbs_nodes")
     conn.execute("""
         CREATE TABLE sap_wbs_nodes (
