@@ -1,0 +1,82 @@
+<div class="mb-6">
+  <h1 class="text-2xl font-bold mb-2">Purchase Orders</h1>
+  <p class="text-walmart-gray-100 text-sm">Operational & financial control center for PO monitoring and give-back tracking.</p>
+</div>
+
+<!-- Summary Cards -->
+<div id="po-summary-cards" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6"></div>
+
+<!-- Filters -->
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-4 mb-6">
+  <div class="flex flex-wrap gap-3 items-end">
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-xs font-semibold text-walmart-gray-100 mb-1">Search</label>
+      <input type="text" id="po-search" placeholder="PO, vendor, store, scope, contractor…"
+             oninput="debounce(renderPOs, 300)()"
+             class="w-full px-3 py-2 border border-walmart-gray-50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-walmart-blue-100">
+    </div>
+    <div class="min-w-[160px]">
+      <label class="block text-xs font-semibold text-walmart-gray-100 mb-1">Vendor</label>
+      <select id="po-filter-vendor" onchange="renderPOs()"
+              class="w-full px-3 py-2 border border-walmart-gray-50 rounded-lg text-sm bg-white">
+        <option value="">All Vendors</option>
+      </select>
+    </div>
+    <div class="min-w-[120px]">
+      <label class="block text-xs font-semibold text-walmart-gray-100 mb-1">PO Status</label>
+      <select id="po-filter-status" onchange="renderPOs()"
+              class="w-full px-3 py-2 border border-walmart-gray-50 rounded-lg text-sm bg-white">
+        <option value="">All</option>
+      </select>
+    </div>
+    <div class="min-w-[140px]">
+      <label class="block text-xs font-semibold text-walmart-gray-100 mb-1">Project Status</label>
+      <select id="po-filter-proj-status" onchange="renderPOs()"
+              class="w-full px-3 py-2 border border-walmart-gray-50 rounded-lg text-sm bg-white">
+        <option value="">All</option>
+      </select>
+    </div>
+  </div>
+  <div class="flex flex-wrap gap-4 mt-3 pt-3 border-t border-walmart-gray-10">
+    <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+      <input type="checkbox" id="po-has-remaining" onchange="renderPOs()"
+             class="rounded border-walmart-gray-50 text-walmart-blue-100 focus:ring-walmart-blue-100">
+      <span>Has Remaining</span>
+    </label>
+    <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
+      <input type="checkbox" id="po-give-back" onchange="renderPOs()"
+             class="rounded border-walmart-gray-50 text-walmart-red-100 focus:ring-walmart-red-100">
+      <span class="text-walmart-red-100 font-medium">Give-Back Only</span>
+    </label>
+  </div>
+</div>
+
+<!-- PO Table -->
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-4">
+  <div class="overflow-x-auto">
+    <table class="w-full text-xs" role="table">
+      <thead>
+        <tr class="bg-walmart-gray-10 border-b border-walmart-gray-50">
+          <th class="text-left py-2 px-2 font-semibold cursor-pointer" onclick="sortPOs('po_number')">PO # <span id="po-sort-po_number" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-left py-2 px-2 font-semibold cursor-pointer" onclick="sortPOs('vendor')">Vendor <span id="po-sort-vendor" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-left py-2 px-2 font-semibold">Store</th>
+          <th class="text-left py-2 px-2 font-semibold">Project Status</th>
+          <th class="text-left py-2 px-2 font-semibold cursor-pointer" onclick="sortPOs('po_status')">PO Status <span id="po-sort-po_status" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-right py-2 px-2 font-semibold cursor-pointer" onclick="sortPOs('po_total')">PO Total <span id="po-sort-po_total" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-right py-2 px-2 font-semibold cursor-pointer" onclick="sortPOs('invoiced_to_date')">Invoiced <span id="po-sort-invoiced_to_date" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-right py-2 px-2 font-semibold cursor-pointer" onclick="sortPOs('remaining_to_invoice')">Remaining <span id="po-sort-remaining_to_invoice" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-left py-2 px-2 font-semibold">Created</th>
+        </tr>
+      </thead>
+      <tbody id="po-tbody"></tbody>
+    </table>
+  </div>
+  <p id="po-count" class="text-sm text-walmart-gray-100 mt-3"></p>
+</div>
+
+<!-- PO Detail Modal -->
+<div id="po-modal-backdrop" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closePoModal()"></div>
+<div id="po-modal" class="fixed right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 overflow-y-auto"
+     role="dialog" aria-label="PO detail view">
+  <div id="po-modal-content" class="p-6"></div>
+</div>

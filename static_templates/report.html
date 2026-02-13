@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plumbing Dashboard Report | Facility Services</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            walmart: {
+              blue: { 10: '#e5effc', 50: '#80a9f1', 100: '#0053e2', 110: '#004ac9', 130: '#003a9e', 160: '#001e52' },
+              spark: { 10: '#fff8e6', 50: '#ffe18f', 100: '#ffc220', 140: '#995213' },
+              green: { 10: '#e8f5e3', 100: '#2a8703' },
+              red: { 10: '#fde8e6', 100: '#ea1100' },
+              gray: { 5: '#f8f8f8', 10: '#f2f2f2', 50: '#cccccc', 100: '#888888', 160: '#2e2e2e' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body.costs-hidden .cost-data { filter: blur(8px); user-select: none; pointer-events: none; }
+    body.costs-hidden .cost-chart { filter: blur(12px); user-select: none; pointer-events: none; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    @media print { nav, footer { display: none; } main { padding: 0 !important; } }
+  </style>
+</head>
+<body class="bg-walmart-gray-5 text-walmart-gray-160 min-h-screen">
+
+  <!-- Nav -->
+  <nav class="bg-walmart-blue-100 text-white shadow-lg print:hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-3">
+          <span class="text-walmart-spark-100 text-2xl font-bold">✦</span>
+          <span class="text-lg font-bold tracking-tight">Plumbing Projects Dashboard</span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="switchTab('dashboard')" data-tab-btn="dashboard"
+                  class="tab-btn px-4 py-2 rounded-md text-sm font-medium transition-colors bg-white/25 font-bold"
+                  aria-label="Dashboard overview">Dashboard</button>
+          <button onclick="switchTab('projects')" data-tab-btn="projects"
+                  class="tab-btn px-4 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white/15"
+                  aria-label="All projects">Projects</button>
+          <button onclick="switchTab('pos')" data-tab-btn="pos"
+                  class="tab-btn px-4 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white/15"
+                  aria-label="Purchase orders">POs</button>
+          <!-- Cost Toggle -->
+          <div class="ml-4 pl-4 border-l border-white/20 flex items-center gap-2">
+            <label for="cost-toggle" class="text-xs text-white/70 cursor-pointer select-none">Costs</label>
+            <button id="cost-toggle" onclick="toggleCosts()" role="switch" aria-checked="true"
+                    aria-label="Toggle cost visibility"
+                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                           bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50">
+              <span id="cost-toggle-dot"
+                    class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform translate-x-4"></span>
+            </button>
+            <span id="cost-toggle-label" class="text-xs font-medium text-white/90">ON</span>
+          </div>
+          <span class="ml-3 text-xs text-white/60">Generated {{ generated_at }}</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" id="main-content">
+    <!-- Dashboard Tab -->
+    <div id="tab-dashboard" class="tab-panel active">
+      {% include 'tab_dashboard.html' %}
+    </div>
+
+    <!-- Projects Tab -->
+    <div id="tab-projects" class="tab-panel">
+      {% include 'tab_projects.html' %}
+    </div>
+
+    <!-- POs Tab -->
+    <div id="tab-pos" class="tab-panel">
+      {% include 'tab_pos.html' %}
+    </div>
+  </main>
+
+  <footer class="bg-white border-t border-walmart-gray-50 mt-12 py-6 print:hidden">
+    <div class="max-w-7xl mx-auto px-4 text-center text-walmart-gray-100 text-sm">
+      Facility Services · Lucernex + SAP Integration · Generated {{ generated_at }} · Built with 🐶 Code Puppy
+    </div>
+  </footer>
+
+  <!-- Embedded Data -->
+  <script>
+    const DATA = {
+      projects: {{ projects_json }},
+      pos: {{ pos_json }},
+      wbsNodes: {{ wbs_nodes_json }},
+      byType: {{ by_type_json }},
+      byStatus: {{ by_status_json }},
+      budgetByType: {{ budget_by_type_json }},
+      contractors: {{ contractors_json }},
+      poSummary: {{ po_summary_json }},
+      stats: {{ stats_json }},
+      giveBack: {{ give_back_json }},
+    };
+  </script>
+  {% include 'app_js.html' %}
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!-- Executive Insights -->
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6 mb-8">
+  <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+    <span class="text-walmart-blue-100">📊</span> Executive Insights
+  </h2>
+  <ul class="space-y-2 text-sm leading-relaxed">
+    {% for insight in insights %}
+    <li class="flex items-start gap-2"><span class="text-walmart-blue-100 mt-0.5">▸</span><span>{{ insight }}</span></li>
+    {% endfor %}
+  </ul>
+</div>
+
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <p class="text-sm font-medium text-walmart-gray-100 uppercase tracking-wide">Total Projects</p>
+    <p class="text-3xl font-bold text-walmart-blue-100 mt-1">{{ stats.total_projects }}</p>
+    <p class="text-sm text-walmart-green-100 mt-1">{{ stats.active_projects }} active</p>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <p class="text-sm font-medium text-walmart-gray-100 uppercase tracking-wide">Total Budget</p>
+    <p class="text-3xl font-bold text-walmart-blue-100 mt-1 cost-data">{{ stats.total_budget | fmt_currency }}</p>
+    <p class="text-sm text-walmart-gray-100 mt-1 cost-data">{{ stats.total_actuals | fmt_currency }} spent</p>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <p class="text-sm font-medium text-walmart-gray-100 uppercase tracking-wide">Remaining to Invoice</p>
+    <p class="text-3xl font-bold text-walmart-spark-140 mt-1 cost-data">{{ stats.remaining_to_invoice | fmt_currency }}</p>
+    <p class="text-sm text-walmart-gray-100 mt-1">{{ stats.total_pos }} purchase orders</p>
+  </div>
+</div>
+
+<!-- WBS Nodes Panel (JS-powered year filter) -->
+<div id="wbs-nodes-panel" class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6 mb-8">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold flex items-center gap-2">
+      <svg class="w-5 h-5 text-walmart-blue-100" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+      </svg>
+      SAP Fund Overview by Node
+    </h2>
+    <select id="wbs-year-select" onchange="renderWbsNodes()" aria-label="Filter by fiscal year"
+            class="text-sm border border-walmart-gray-50 rounded-lg px-3 py-1.5 bg-white text-walmart-gray-160
+                   focus:outline-none focus:ring-2 focus:ring-walmart-blue-100 cursor-pointer">
+      <option value="">All Years</option>
+    </select>
+  </div>
+  <div id="wbs-cards-container"></div>
+  <div id="wbs-totals-container"></div>
+</div>
+
+<!-- Charts Row 1 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <h2 class="text-lg font-semibold mb-4">Projects by Type</h2>
+    <div style="height: 300px;"><canvas id="chartByType"></canvas></div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <h2 class="text-lg font-semibold mb-4">Projects by Status</h2>
+    <div style="height: 300px;"><canvas id="chartByStatus"></canvas></div>
+  </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6 mb-8 cost-chart">
+  <h2 class="text-lg font-semibold mb-4">Budget Breakdown by Project Type</h2>
+  <div style="height: 350px;"><canvas id="chartBudget"></canvas></div>
+</div>
+
+<!-- Bottom Tables -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <h2 class="text-lg font-semibold mb-4">Top General Contractors</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm" role="table">
+        <thead><tr class="border-b border-walmart-gray-50">
+          <th class="text-left py-2 px-3 font-semibold" scope="col">Contractor</th>
+          <th class="text-right py-2 px-3 font-semibold" scope="col">Projects</th>
+          <th class="text-right py-2 px-3 font-semibold" scope="col">Total Budget</th>
+        </tr></thead>
+        <tbody>
+          {% for gc in contractors %}
+          <tr class="border-b border-walmart-gray-10 hover:bg-walmart-gray-5">
+            <td class="py-2 px-3">{{ gc.general_contractor or 'Unassigned' }}</td>
+            <td class="py-2 px-3 text-right font-medium">{{ gc.project_count }}</td>
+            <td class="py-2 px-3 text-right cost-data">{{ gc.total_budget | fmt_currency }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+    <h2 class="text-lg font-semibold mb-4">Purchase Order Status</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm" role="table">
+        <thead><tr class="border-b border-walmart-gray-50">
+          <th class="text-left py-2 px-3 font-semibold" scope="col">Status</th>
+          <th class="text-right py-2 px-3 font-semibold" scope="col">Count</th>
+          <th class="text-right py-2 px-3 font-semibold" scope="col">Total Value</th>
+        </tr></thead>
+        <tbody>
+          {% for po in po_summary %}
+          <tr class="border-b border-walmart-gray-10 hover:bg-walmart-gray-5">
+            <td class="py-2 px-3">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                {% if po.po_status == 'Open' %}bg-walmart-green-10 text-walmart-green-100
+                {% elif po.po_status == 'Closed' %}bg-walmart-gray-10 text-walmart-gray-160
+                {% else %}bg-walmart-spark-10 text-walmart-spark-140{% endif %}">{{ po.po_status }}</span>
+            </td>
+            <td class="py-2 px-3 text-right font-medium">{{ po.cnt }}</td>
+            <td class="py-2 px-3 text-right cost-data">{{ po.total | fmt_currency }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Recommendations -->
+<div class="bg-walmart-blue-10 rounded-xl border border-walmart-blue-50 p-6">
+  <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+    <span class="text-walmart-blue-100">💡</span> Recommendations for Leadership
+  </h2>
+  <ul class="space-y-2 text-sm leading-relaxed">
+    {% for rec in recommendations %}
+    <li class="flex items-start gap-2"><span class="text-walmart-blue-100 mt-0.5">▸</span><span>{{ rec }}</span></li>
+    {% endfor %}
+  </ul>
+</div>

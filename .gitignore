@@ -1,29 +1,38 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
+*.egg-info/
 .venv/
 venv/
-*.egg-info/
-dist/
-build/
 
-# SQLite
+# Database (contains operational data - regenerate via sync)
 *.db
 *.sqlite
 *.sqlite3
 
-# Environment
-.env
+# Generated reports in root (use docs/ for Pages)
+/report.html
+
+# Data files that could contain PII
+*.csv
+*.xlsx
+*.xls
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # Logs
 *.log
 server.log
+
+# Environment
+.env
+.env.local

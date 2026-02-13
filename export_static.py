@@ -1,7 +1,8 @@
 """Export the Lucernex Plumbing Dashboard as a self-contained static HTML report.
 
-Reads data from the SQLite database and generates a single HTML file that can
-be opened directly in any browser — no server needed. Perfect for SharePoint.
+Reads data from the SQLite database and generates a single HTML file with
+embedded JSON data + client-side JavaScript for full interactivity (tabs,
+search, filters, sorting, modals). No server needed — perfect for SharePoint.
 
 Usage:
     python export_static.py            # writes to ./report.html
@@ -14,7 +15,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader
+
 DB_PATH = Path(__file__).parent / "dashboard.db"
+TEMPLATE_DIR = Path(__file__).parent / "static_templates"
 
 
 def get_db() -> sqlite3.Connection:
@@ -23,9 +27,9 @@ def get_db() -> sqlite3.Connection:
     return conn
 
 
-# ── Data queries (self-contained, no app imports needed) ─────────────
+# ── Data queries ─────────────────────────────────────────────────────
 
-def _query_summary_stats(conn: sqlite3.Connection) -> dict:
+def query_summary_stats(conn: sqlite3.Connection) -> dict:
     stats = {}
     stats["total_projects"] = conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
     stats["active_projects"] = conn.execute(
@@ -44,21 +48,21 @@ def _query_summary_stats(conn: sqlite3.Connection) -> dict:
     return stats
 
 
-def _query_by_type(conn: sqlite3.Connection) -> list[dict]:
+def query_by_type(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute(
         "SELECT project_type, COUNT(*) as cnt FROM projects GROUP BY project_type ORDER BY cnt DESC"
     ).fetchall()
     return [dict(r) for r in rows]
 
 
-def _query_by_status(conn: sqlite3.Connection) -> list[dict]:
+def query_by_status(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute(
         "SELECT project_status, COUNT(*) as cnt FROM projects GROUP BY project_status ORDER BY cnt DESC"
     ).fetchall()
     return [dict(r) for r in rows]
 
 
-def _query_budget_by_type(conn: sqlite3.Connection) -> list[dict]:
+def query_budget_by_type(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute("""
         SELECT p.project_type,
                COALESCE(SUM(b.budget_total), 0) as budget_total,
@@ -72,7 +76,7 @@ def _query_budget_by_type(conn: sqlite3.Connection) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def _query_top_contractors(conn: sqlite3.Connection) -> list[dict]:
+def query_top_contractors(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute("""
         SELECT general_contractor, COUNT(*) as project_count,
                COALESCE(SUM(b.budget_total), 0) as total_budget
@@ -83,35 +87,53 @@ def _query_top_contractors(conn: sqlite3.Connection) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def _query_po_summary(conn: sqlite3.Connection) -> list[dict]:
+def query_po_summary(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute("""
-        SELECT po_status, COUNT(*) as cnt, SUM(po_total) as total
+        SELECT po_status, COUNT(*) as cnt, COALESCE(SUM(po_total), 0) as total
         FROM sap_po GROUP BY po_status ORDER BY cnt DESC
     """).fetchall()
     return [dict(r) for r in rows]
 
 
-def _query_projects_table(conn: sqlite3.Connection) -> list[dict]:
+def query_projects(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute("""
         SELECT p.project_id, p.project_type, p.store, p.store_sequence,
                p.city, p.state, p.project_status, p.brief_scope_of_work,
-               p.general_contractor, p.banner,
-               COALESCE(po_agg.total_po, b.budget_total, 0) AS budget_total,
-               COALESCE(po_agg.total_invoiced, b.budget_actuals, 0) AS budget_actuals
+               p.general_contractor, p.banner, p.sap_project_definition,
+               p.construction_complete_date, p.created_date,
+               COALESCE(b.budget_total, 0) AS budget_total,
+               COALESCE(b.budget_actuals, 0) AS budget_actuals
         FROM projects p
         LEFT JOIN sap_budget b ON p.sap_project_definition = b.sap_project_definition
-        LEFT JOIN (
-            SELECT sap_project_definition,
-                   SUM(po_total) AS total_po,
-                   SUM(invoiced_to_date) AS total_invoiced
-            FROM sap_po GROUP BY sap_project_definition
-        ) po_agg ON p.sap_project_definition = po_agg.sap_project_definition
         ORDER BY p.project_id
     """).fetchall()
     return [dict(r) for r in rows]
 
 
-def _query_give_back_summary(conn: sqlite3.Connection) -> dict:
+def query_pos(conn: sqlite3.Connection) -> list[dict]:
+    """Query all POs with project context for the PO tab."""
+    rows = conn.execute("""
+        SELECT po.po_number, po.vendor, po.po_total, po.invoiced_to_date,
+               po.remaining_to_invoice, po.po_status, po.created_date,
+               po.last_update, po.sap_project_definition, po.vendor_email,
+               p.store, p.project_status, p.project_type,
+               p.general_contractor, p.brief_scope_of_work AS scope,
+               p.city, p.state, p.banner
+        FROM sap_po po
+        LEFT JOIN projects p ON po.sap_project_definition = p.sap_project_definition
+        ORDER BY po.po_number
+    """).fetchall()
+    return [dict(r) for r in rows]
+
+
+def query_wbs_nodes(conn: sqlite3.Connection) -> list[dict]:
+    rows = conn.execute(
+        "SELECT * FROM sap_wbs_nodes ORDER BY node_key, approval_year"
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def query_give_back(conn: sqlite3.Connection) -> dict:
     row = conn.execute("""
         SELECT
             COUNT(*) AS total_pos,
@@ -131,19 +153,7 @@ def _query_give_back_summary(conn: sqlite3.Connection) -> dict:
     return dict(row)
 
 
-def _query_wbs_nodes(conn: sqlite3.Connection) -> list[dict]:
-    """Return WBS node budget data."""
-    rows = conn.execute(
-        "SELECT * FROM sap_wbs_nodes ORDER BY node_key"
-    ).fetchall()
-    return [dict(r) for r in rows]
-
-
-def _fmt(value: float | None) -> str:
-    if value is None:
-        return "$0.00"
-    return f"${value:,.2f}"
-
+# ── Insights generator ───────────────────────────────────────────────
 
 def _fmt_k(value: float | None) -> str:
     if value is None:
@@ -155,20 +165,9 @@ def _fmt_k(value: float | None) -> str:
     return f"${value:,.0f}"
 
 
-# ── Insights generator ───────────────────────────────────────────────
-
-def _generate_insights(
-    stats: dict,
-    by_type: list[dict],
-    by_status: list[dict],
-    budget_by_type: list[dict],
-    give_back: dict,
-    contractors: list[dict],
-) -> list[str]:
-    """Generate executive-level bullet insights from the data."""
+def generate_insights(stats, by_type, give_back, contractors) -> list[str]:
+    """Generate executive-level bullet insights from data."""
     insights = []
-
-    # Portfolio overview
     pct_active = (
         (stats["active_projects"] / stats["total_projects"] * 100)
         if stats["total_projects"] else 0
@@ -177,490 +176,78 @@ def _generate_insights(
         f"The plumbing portfolio has <strong>{stats['total_projects']} projects</strong> "
         f"with <strong>{stats['active_projects']} ({pct_active:.0f}%)</strong> currently active."
     )
-
-    # Budget utilisation
     if stats["total_budget"] > 0:
         util = stats["total_actuals"] / stats["total_budget"] * 100
         insights.append(
             f"Budget utilisation is at <strong>{util:.0f}%</strong> "
             f"({_fmt_k(stats['total_actuals'])} spent of {_fmt_k(stats['total_budget'])} total)."
         )
-
-    # Remaining to invoice
     if stats["remaining_to_invoice"] > 0:
         insights.append(
             f"<strong>{_fmt_k(stats['remaining_to_invoice'])}</strong> remains to be invoiced "
             f"across {stats['total_pos']} purchase orders."
         )
-
-    # Give-back opportunity
     if give_back["total_give_back"] > 0:
         insights.append(
-            f"🔔 <strong>Give-back opportunity:</strong> {give_back['complete_with_open_pos']} "
+            f"\U0001f514 <strong>Give-back opportunity:</strong> {give_back['complete_with_open_pos']} "
             f"completed projects still have open PO balances totalling "
             f"<strong>{_fmt_k(give_back['total_give_back'])}</strong>."
         )
-
-    # Largest type
     if by_type:
         top = by_type[0]
         insights.append(
             f"<strong>{top['project_type']}</strong> is the largest category "
             f"with {top['cnt']} projects."
         )
-
-    # Top contractor
     if contractors:
         tc = contractors[0]
         insights.append(
             f"Top contractor is <strong>{tc['general_contractor'] or 'Unassigned'}</strong> "
             f"handling {tc['project_count']} projects ({_fmt_k(tc['total_budget'])} budget)."
         )
-
     return insights
 
 
-# ── HTML builder ─────────────────────────────────────────────────────
-
-def _build_wbs_nodes_html(wbs_nodes: list[dict]) -> str:
-    """Build the SAP WBS node fund overview HTML cards."""
-    if not wbs_nodes:
-        return '<p class="text-gray-500 text-sm">No WBS node data available.</p>'
-
-    cards = ""
-    for node in wbs_nodes:
-        has_data = (node.get("current_budget") or 0) > 0
-        pct_spent = (node["actuals"] / node["current_budget"] * 100) if has_data else 0
-        pct_committed = (node["open_commitments"] / node["current_budget"] * 100) if has_data else 0
-        pct_available = (node["budget_available"] / node["current_budget"] * 100) if has_data else 0
-
-        border_cls = "border-blue-200 bg-blue-50/30" if has_data else "border-gray-200 bg-gray-50"
-        avail_cls = "text-green-700" if (node.get("budget_available") or 0) > 0 else "text-red-600"
-
-        movements = ""
-        if has_data and (node.get("supplemental_budget", 0) != 0 or node.get("returned_budget", 0) != 0):
-            supp = f'<div class="flex justify-between"><dt class="text-gray-500">Supplemental</dt><dd class="text-green-700 cost-data">+{_fmt(node["supplemental_budget"])}</dd></div>' if node.get("supplemental_budget", 0) != 0 else ""
-            ret = f'<div class="flex justify-between"><dt class="text-gray-500">Returned</dt><dd class="text-red-600 cost-data">{_fmt(node["returned_budget"])}</dd></div>' if node.get("returned_budget", 0) != 0 else ""
-            movements = f"""<details class="mt-3 text-xs">
-              <summary class="cursor-pointer text-blue-600 hover:underline font-medium">Budget movements</summary>
-              <dl class="space-y-1 mt-2 pl-2 border-l-2 border-blue-100">
-                <div class="flex justify-between"><dt class="text-gray-500">Original Budget</dt><dd class="cost-data">{_fmt(node["original_budget"])}</dd></div>
-                {supp}{ret}
-              </dl>
-            </details>"""
-
-        if has_data:
-            content = f"""<div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden flex mb-3">
-                <div class="bg-[#0053e2] h-full" style="width: {pct_spent}%"></div>
-                <div class="bg-[#ffc220] h-full" style="width: {pct_committed}%"></div>
-              </div>
-              <div class="flex justify-between text-[10px] text-gray-500 mb-3">
-                <span>Spent {pct_spent:.0f}%</span>
-                <span>Committed {pct_committed:.0f}%</span>
-                <span>Available {pct_available:.0f}%</span>
-              </div>
-              <dl class="space-y-1.5 text-xs">
-                <div class="flex justify-between"><dt class="text-gray-500">Current Budget</dt><dd class="font-bold cost-data">{_fmt(node['current_budget'])}</dd></div>
-                <div class="flex justify-between"><dt class="text-gray-500">Actuals (Spent)</dt><dd class="font-semibold text-blue-700 cost-data">{_fmt(node['actuals'])}</dd></div>
-                <div class="flex justify-between"><dt class="text-gray-500">Open Commitments</dt><dd class="font-semibold text-yellow-700 cost-data">{_fmt(node['open_commitments'])}</dd></div>
-                <div class="flex justify-between border-t border-gray-200 pt-1.5"><dt class="text-gray-500 font-medium">Available</dt><dd class="font-bold {avail_cls} cost-data">{_fmt(node['budget_available'])}</dd></div>
-              </dl>
-              {movements}"""
-        else:
-            content = '<p class="text-xs text-gray-400 italic">Node not found in SAP budget hierarchy.</p>'
-
-        status_badge = f'<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">{node["project_count"]} projects</span>' if has_data else '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">No data</span>'
-
-        cards += f"""<div class="rounded-lg border {border_cls} p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div><p class="text-sm font-bold">{node['node_label']}</p><p class="text-xs text-gray-500 font-mono">{node['node_key']}</p></div>
-            {status_badge}
-          </div>
-          {content}
-        </div>"""
-
-    # Cross-node totals
-    total_budget = sum(n.get("current_budget", 0) or 0 for n in wbs_nodes)
-    total_spent = sum(n.get("actuals", 0) or 0 for n in wbs_nodes)
-    total_committed = sum(n.get("open_commitments", 0) or 0 for n in wbs_nodes)
-    total_available = sum(n.get("budget_available", 0) or 0 for n in wbs_nodes)
-    avail_cls = "text-green-700" if total_available > 0 else "text-red-600"
-
-    totals = f"""<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-gray-200">
-      <div class="text-center"><p class="text-xs text-gray-500 font-semibold uppercase">Combined Budget</p><p class="text-lg font-bold cost-data">{_fmt(total_budget)}</p></div>
-      <div class="text-center"><p class="text-xs text-gray-500 font-semibold uppercase">Total Spent</p><p class="text-lg font-bold text-blue-700 cost-data">{_fmt(total_spent)}</p></div>
-      <div class="text-center"><p class="text-xs text-gray-500 font-semibold uppercase">Total Committed</p><p class="text-lg font-bold text-yellow-700 cost-data">{_fmt(total_committed)}</p></div>
-      <div class="text-center"><p class="text-xs text-gray-500 font-semibold uppercase">Total Available</p><p class="text-lg font-bold {avail_cls} cost-data">{_fmt(total_available)}</p></div>
-    </div>""" if total_budget > 0 else ""
-
-    return f"""<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-      <h2 class="text-lg font-semibold mb-4">SAP Fund Overview by Node</h2>
-      <div class="grid grid-cols-1 lg:grid-cols-{len(wbs_nodes)} gap-4 mb-4">{cards}</div>
-      {totals}
-    </div>"""
+def generate_recommendations(stats, give_back) -> list[str]:
+    return [
+        f"Review the <strong>{_fmt_k(give_back['total_give_back'])}</strong> give-back "
+        f"opportunity from completed projects with open PO balances to recapture budget.",
+        f"Focus invoice reconciliation on the <strong>{stats['total_pos']} active POs</strong> "
+        f"to reduce the remaining-to-invoice backlog.",
+        "Consider consolidating contractor assignments — the top contractors handle the "
+        "majority of projects, presenting negotiation leverage.",
+        "This report reflects a point-in-time snapshot. For live data, access the full "
+        "dashboard application or re-run the export.",
+    ]
 
 
-def _build_html(
-    stats: dict,
-    by_type: list[dict],
-    by_status: list[dict],
-    budget_by_type: list[dict],
-    contractors: list[dict],
-    po_summary: list[dict],
-    projects: list[dict],
-    give_back: dict,
-    wbs_nodes: list[dict],
-    generated_at: str,
-) -> str:
-    insights = _generate_insights(
-        stats, by_type, by_status, budget_by_type, give_back, contractors,
+# ── Jinja2 template rendering ────────────────────────────────────────
+
+def fmt_currency(value):
+    """Jinja2 filter: format as $X,XXX.XX"""
+    if value is None:
+        return "$0.00"
+    return f"${value:,.2f}"
+
+
+def render_report(data: dict) -> str:
+    """Render the static report HTML using Jinja2 templates."""
+    env = Environment(
+        loader=FileSystemLoader(str(TEMPLATE_DIR)),
+        autoescape=False,
     )
+    env.filters["fmt_currency"] = fmt_currency
+    template = env.get_template("report.html")
+    return template.render(**data)
 
-    # Build contractor rows
-    contractor_rows = ""
-    for gc in contractors:
-        contractor_rows += f"""<tr class="border-b border-gray-100 hover:bg-gray-50">
-          <td class="py-2 px-3">{gc['general_contractor'] or 'Unassigned'}</td>
-          <td class="py-2 px-3 text-right font-medium">{gc['project_count']}</td>
-          <td class="py-2 px-3 text-right cost-data">{_fmt(gc['total_budget'])}</td>
-        </tr>"""
 
-    # Build PO status rows
-    po_rows = ""
-    status_badge_cls = {
-        "Open": "bg-green-50 text-green-700",
-        "Closed": "bg-gray-100 text-gray-700",
-    }
-    for po in po_summary:
-        badge = status_badge_cls.get(po["po_status"], "bg-yellow-50 text-yellow-800")
-        po_rows += f"""<tr class="border-b border-gray-100 hover:bg-gray-50">
-          <td class="py-2 px-3">
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {badge}">
-              {po['po_status']}
-            </span>
-          </td>
-          <td class="py-2 px-3 text-right font-medium">{po['cnt']}</td>
-          <td class="py-2 px-3 text-right cost-data">{_fmt(po['total'])}</td>
-        </tr>"""
-
-    # Build projects table rows
-    project_rows = ""
-    for p in projects:
-        status_color = {
-            "Active": "bg-green-50 text-green-700",
-            "Complete": "bg-blue-50 text-blue-700",
-            "On Hold": "bg-yellow-50 text-yellow-800",
-            "Cancelled": "bg-red-50 text-red-700",
-        }.get(p["project_status"] or "", "bg-gray-100 text-gray-600")
-        scope = (p["brief_scope_of_work"] or "")[:60]
-        if len(p.get("brief_scope_of_work") or "") > 60:
-            scope += "…"
-        project_rows += f"""<tr class="border-b border-gray-100 hover:bg-gray-50">
-          <td class="py-2 px-3 font-medium text-blue-700">{p['project_id']}</td>
-          <td class="py-2 px-3 text-xs">{(p['project_type'] or '').replace('PLBG ', '')}</td>
-          <td class="py-2 px-3">{p['store'] or ''}</td>
-          <td class="py-2 px-3">{p['city'] or ''}, {p['state'] or ''}</td>
-          <td class="py-2 px-3">
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {status_color}">
-              {p['project_status'] or 'Unknown'}
-            </span>
-          </td>
-          <td class="py-2 px-3 text-xs">{scope}</td>
-          <td class="py-2 px-3">{p['general_contractor'] or ''}</td>
-          <td class="py-2 px-3 text-right cost-data">{_fmt(p['budget_total'])}</td>
-          <td class="py-2 px-3 text-right cost-data">{_fmt(p['budget_actuals'])}</td>
-        </tr>"""
-
-    # Insights HTML
-    insights_html = "\n".join(
-        f'<li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span><span>{i}</span></li>'
-        for i in insights
-    )
-
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plumbing Dashboard Report | Facility Services</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <style>
-    body {{ font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }}
-    body.costs-hidden .cost-data {{ filter: blur(8px); user-select: none; pointer-events: none; }}
-    body.costs-hidden .cost-chart {{ filter: blur(12px); user-select: none; pointer-events: none; }}
-    body.costs-hidden .cost-hide {{ display: none !important; }}
-    @media print {{ nav, footer {{ display: none; }} main {{ padding: 0 !important; }} }}
-  </style>
-</head>
-<body class="bg-gray-50 text-gray-900 min-h-screen">
-
-  <!-- Top Nav -->
-  <nav class="bg-[#0053e2] text-white shadow-lg print:hidden">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        <div class="flex items-center space-x-3">
-          <span class="text-[#ffc220] text-2xl font-bold">✦</span>
-          <span class="text-lg font-bold tracking-tight">Plumbing Projects Dashboard</span>
-        </div>
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2">
-            <label for="cost-toggle" class="text-xs text-white/70 cursor-pointer select-none">Costs</label>
-            <button id="cost-toggle" onclick="toggleCosts()" role="switch" aria-checked="true"
-                    aria-label="Toggle cost visibility"
-                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                           bg-white/30 focus:outline-none focus:ring-2 focus:ring-white/50">
-              <span id="cost-toggle-dot"
-                    class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform translate-x-4"></span>
-            </button>
-            <span id="cost-toggle-label" class="text-xs font-medium text-white/90">ON</span>
-          </div>
-          <span class="text-sm opacity-80">Static Report \u00b7 Generated {generated_at}</span>
-        </div>
-      </div>
-    </div>
-  </nav>
-
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-    <!-- Executive Insights -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-      <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
-        <span class="text-[#0053e2]">📊</span> Executive Insights
-      </h2>
-      <ul class="space-y-2 text-sm leading-relaxed">
-        {insights_html}
-      </ul>
-    </div>
-
-    <!-- KPI Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Projects</p>
-        <p class="text-3xl font-bold text-[#0053e2] mt-1">{stats['total_projects']}</p>
-        <p class="text-sm text-green-600 mt-1">{stats['active_projects']} active</p>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Budget</p>
-        <p class="text-3xl font-bold text-[#0053e2] mt-1 cost-data">{_fmt(stats['total_budget'])}</p>
-        <p class="text-sm text-gray-500 mt-1 cost-data">{_fmt(stats['total_actuals'])} spent</p>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">Remaining to Invoice</p>
-        <p class="text-3xl font-bold text-[#995213] mt-1 cost-data">{_fmt(stats['remaining_to_invoice'])}</p>
-        <p class="text-sm text-gray-500 mt-1">{stats['total_pos']} purchase orders</p>
-      </div>
-    </div>
-
-    <!-- SAP WBS Node Fund Overview -->
-    {_build_wbs_nodes_html(wbs_nodes)}
-
-    <!-- Charts Row 1 -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 class="text-lg font-semibold mb-4">Projects by Type</h2>
-        <div style="height: 300px;"><canvas id="chartByType"></canvas></div>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 class="text-lg font-semibold mb-4">Projects by Status</h2>
-        <div style="height: 300px;"><canvas id="chartByStatus"></canvas></div>
-      </div>
-    </div>
-
-    <!-- Charts Row 2 -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8 cost-chart">
-      <h2 class="text-lg font-semibold mb-4">Budget Breakdown by Project Type</h2>
-      <div style="height: 350px;"><canvas id="chartBudget"></canvas></div>
-    </div>
-
-    <!-- Bottom Tables -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 class="text-lg font-semibold mb-4">Top General Contractors</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm" role="table">
-            <thead>
-              <tr class="border-b border-gray-300">
-                <th class="text-left py-2 px-3 font-semibold" scope="col">Contractor</th>
-                <th class="text-right py-2 px-3 font-semibold" scope="col">Projects</th>
-                <th class="text-right py-2 px-3 font-semibold" scope="col">Total Budget</th>
-              </tr>
-            </thead>
-            <tbody>{contractor_rows}</tbody>
-          </table>
-        </div>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 class="text-lg font-semibold mb-4">Purchase Order Status</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm" role="table">
-            <thead>
-              <tr class="border-b border-gray-300">
-                <th class="text-left py-2 px-3 font-semibold" scope="col">Status</th>
-                <th class="text-right py-2 px-3 font-semibold" scope="col">Count</th>
-                <th class="text-right py-2 px-3 font-semibold" scope="col">Total Value</th>
-              </tr>
-            </thead>
-            <tbody>{po_rows}</tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Full Projects Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-      <h2 class="text-lg font-semibold mb-4">All Projects ({len(projects)})</h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm" role="table" id="projectsTable">
-          <thead class="sticky top-0 bg-white">
-            <tr class="border-b-2 border-gray-300">
-              <th class="text-left py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(0)">Entity ID ↕</th>
-              <th class="text-left py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(1)">Type ↕</th>
-              <th class="text-left py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(2)">Store ↕</th>
-              <th class="text-left py-2 px-3 font-semibold" scope="col">Location</th>
-              <th class="text-left py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(4)">Status ↕</th>
-              <th class="text-left py-2 px-3 font-semibold" scope="col">Scope</th>
-              <th class="text-left py-2 px-3 font-semibold" scope="col">Contractor</th>
-              <th class="text-right py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(7)">Budget ↕</th>
-              <th class="text-right py-2 px-3 font-semibold cursor-pointer" scope="col" onclick="sortTable(8)">Actuals ↕</th>
-            </tr>
-          </thead>
-          <tbody>{project_rows}</tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Bottom Analysis -->
-    <div class="bg-blue-50 rounded-xl border border-blue-200 p-6">
-      <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
-        <span class="text-[#0053e2]">💡</span> Recommendations for Leadership
-      </h2>
-      <ul class="space-y-2 text-sm leading-relaxed">
-        <li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span>
-          <span>Review the <strong>{_fmt_k(give_back['total_give_back'])}</strong> give-back opportunity from completed projects with open PO balances to recapture budget.</span></li>
-        <li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span>
-          <span>Focus invoice reconciliation on the <strong>{stats['total_pos']} active POs</strong> to reduce the remaining-to-invoice backlog.</span></li>
-        <li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span>
-          <span>Consider consolidating contractor assignments — the top 3 contractors handle the majority of projects, presenting negotiation leverage.</span></li>
-        <li class="flex items-start gap-2"><span class="text-blue-600 mt-0.5">▸</span>
-          <span>This report reflects a point-in-time snapshot. For live data, access the full dashboard application or re-run the export.</span></li>
-      </ul>
-    </div>
-
-  </main>
-
-  <footer class="bg-white border-t border-gray-200 mt-12 py-6 print:hidden">
-    <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
-      Facility Services · Lucernex + SAP Integration · Generated {generated_at} · Built with 🐶 Code Puppy
-    </div>
-  </footer>
-
-  <script>
-    // ── Chart.js init ──────────────────────────────────────────────
-    const WM_BLUE = '#0053e2';
-    const WM_SPARK = '#ffc220';
-    const WM_GREEN = '#2a8703';
-    const WM_RED = '#ea1100';
-    const PALETTE = [WM_BLUE, WM_SPARK, WM_GREEN, WM_RED, '#80a9f1', '#ffe18f', '#995213', '#cccccc'];
-    Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
-    Chart.defaults.plugins.legend.labels.usePointStyle = true;
-
-    const byType = {json.dumps(by_type)};
-    new Chart(document.getElementById('chartByType'), {{
-      type: 'doughnut',
-      data: {{
-        labels: byType.map(d => d.project_type.replace('PLBG ', '')),
-        datasets: [{{
-          data: byType.map(d => d.cnt),
-          backgroundColor: PALETTE.slice(0, byType.length),
-          borderWidth: 2, borderColor: '#fff'
-        }}]
-      }},
-      options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ position: 'bottom' }} }} }}
-    }});
-
-    const byStatus = {json.dumps(by_status)};
-    const statusColors = {{ 'Active': WM_GREEN, 'Complete': WM_BLUE, 'On Hold': WM_SPARK, 'Cancelled': WM_RED }};
-    new Chart(document.getElementById('chartByStatus'), {{
-      type: 'doughnut',
-      data: {{
-        labels: byStatus.map(d => d.project_status),
-        datasets: [{{
-          data: byStatus.map(d => d.cnt),
-          backgroundColor: byStatus.map(d => statusColors[d.project_status] || '#ccc'),
-          borderWidth: 2, borderColor: '#fff'
-        }}]
-      }},
-      options: {{ responsive: true, maintainAspectRatio: false, plugins: {{ legend: {{ position: 'bottom' }} }} }}
-    }});
-
-    const budgetData = {json.dumps(budget_by_type)};
-    new Chart(document.getElementById('chartBudget'), {{
-      type: 'bar',
-      data: {{
-        labels: budgetData.map(d => d.project_type.replace('PLBG ', '')),
-        datasets: [
-          {{ label: 'Actuals', data: budgetData.map(d => d.budget_actuals), backgroundColor: WM_BLUE }},
-          {{ label: 'Committed', data: budgetData.map(d => d.budget_committed), backgroundColor: WM_SPARK }},
-          {{ label: 'Open', data: budgetData.map(d => d.budget_open), backgroundColor: '#80a9f1' }},
-        ]
-      }},
-      options: {{
-        responsive: true, maintainAspectRatio: false,
-        scales: {{
-          x: {{ stacked: true, grid: {{ display: false }} }},
-          y: {{ stacked: true, ticks: {{ callback: v => '$' + (v / 1000).toFixed(0) + 'K' }} }}
-        }},
-        plugins: {{ legend: {{ position: 'bottom' }} }}
-      }}
-    }});
-
-    // ── Cost toggle ─────────────────────────────────────────────────────
-    function toggleCosts() {{
-      const body = document.body;
-      const btn = document.getElementById('cost-toggle');
-      const dot = document.getElementById('cost-toggle-dot');
-      const label = document.getElementById('cost-toggle-label');
-      const hidden = body.classList.toggle('costs-hidden');
-      btn.setAttribute('aria-checked', !hidden);
-      dot.classList.toggle('translate-x-4', !hidden);
-      dot.classList.toggle('translate-x-0.5', hidden);
-      btn.classList.toggle('bg-white/30', !hidden);
-      btn.classList.toggle('bg-red-400/60', hidden);
-      label.textContent = hidden ? 'OFF' : 'ON';
-      label.classList.toggle('text-white/90', !hidden);
-      label.classList.toggle('text-red-200', hidden);
-      sessionStorage.setItem('costsHidden', hidden ? '1' : '0');
-    }}
-    (function() {{
-      if (sessionStorage.getItem('costsHidden') === '1') {{ toggleCosts(); }}
-    }})();
-
-    // ── Client-side table sort ─────────────────────────────────────────
-    let sortDir = {{}};
-    function sortTable(colIdx) {{
-      const table = document.getElementById('projectsTable');
-      const tbody = table.querySelector('tbody');
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-      sortDir[colIdx] = !sortDir[colIdx];
-      const dir = sortDir[colIdx] ? 1 : -1;
-      rows.sort((a, b) => {{
-        let aVal = a.cells[colIdx].textContent.trim();
-        let bVal = b.cells[colIdx].textContent.trim();
-        const aNum = parseFloat(aVal.replace(/[$,]/g, ''));
-        const bNum = parseFloat(bVal.replace(/[$,]/g, ''));
-        if (!isNaN(aNum) && !isNaN(bNum)) return (aNum - bNum) * dir;
-        return aVal.localeCompare(bVal) * dir;
-      }});
-      rows.forEach(r => tbody.appendChild(r));
-    }}
-  </script>
-</body>
-</html>"""
-
+# ── Main ─────────────────────────────────────────────────────────────
 
 def main() -> None:
-    output_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "report.html"
+    output_path = (
+        Path(sys.argv[1]) if len(sys.argv) > 1
+        else Path(__file__).parent / "report.html"
+    )
 
     if not DB_PATH.exists():
         print(f"[ERROR] Database not found: {DB_PATH}")
@@ -669,36 +256,47 @@ def main() -> None:
     print(f"[*] Reading data from {DB_PATH} ...")
     conn = get_db()
 
-    stats = _query_summary_stats(conn)
-    by_type = _query_by_type(conn)
-    by_status = _query_by_status(conn)
-    budget_by_type = _query_budget_by_type(conn)
-    contractors = _query_top_contractors(conn)
-    po_summary = _query_po_summary(conn)
-    projects = _query_projects_table(conn)
-    give_back = _query_give_back_summary(conn)
-    wbs_nodes = _query_wbs_nodes(conn)
+    stats = query_summary_stats(conn)
+    by_type = query_by_type(conn)
+    by_status = query_by_status(conn)
+    budget_by_type = query_budget_by_type(conn)
+    contractors = query_top_contractors(conn)
+    po_summary = query_po_summary(conn)
+    projects = query_projects(conn)
+    pos = query_pos(conn)
+    wbs_nodes = query_wbs_nodes(conn)
+    give_back = query_give_back(conn)
     conn.close()
 
     generated_at = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    insights = generate_insights(stats, by_type, give_back, contractors)
+    recommendations = generate_recommendations(stats, give_back)
 
     print(f"[*] Building static HTML report ...")
-    html = _build_html(
-        stats=stats,
-        by_type=by_type,
-        by_status=by_status,
-        budget_by_type=budget_by_type,
-        contractors=contractors,
-        po_summary=po_summary,
-        projects=projects,
-        give_back=give_back,
-        wbs_nodes=wbs_nodes,
-        generated_at=generated_at,
-    )
+    html = render_report({
+        "generated_at": generated_at,
+        "stats": stats,
+        "insights": insights,
+        "recommendations": recommendations,
+        "contractors": contractors,
+        "po_summary": po_summary,
+        "give_back": give_back,
+        # JSON for client-side interactivity
+        "projects_json": json.dumps(projects),
+        "pos_json": json.dumps(pos),
+        "wbs_nodes_json": json.dumps(wbs_nodes),
+        "by_type_json": json.dumps(by_type),
+        "by_status_json": json.dumps(by_status),
+        "budget_by_type_json": json.dumps(budget_by_type),
+        "contractors_json": json.dumps(contractors),
+        "po_summary_json": json.dumps(po_summary),
+        "stats_json": json.dumps(stats),
+        "give_back_json": json.dumps(give_back),
+    })
 
     output_path.write_text(html, encoding="utf-8")
     print(f"[OK] Report written to {output_path.resolve()}")
-    print(f"   {len(projects)} projects · {stats['total_pos']} POs · {len(contractors)} contractors")
+    print(f"     {len(projects)} projects · {len(pos)} POs · {len(contractors)} contractors")
 
 
 if __name__ == "__main__":

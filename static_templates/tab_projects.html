@@ -1,0 +1,72 @@
+<div class="bg-white rounded-xl shadow-sm border border-walmart-gray-50 p-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+    <h1 class="text-2xl font-bold">All Plumbing Projects</h1>
+    <p class="text-walmart-gray-100 text-sm mt-1 sm:mt-0" id="proj-count"></p>
+  </div>
+
+  <!-- Filters -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+    <div>
+      <label class="block text-xs font-medium text-walmart-gray-100 mb-1">Banner</label>
+      <select id="proj-filter-banner" onchange="renderProjects()"
+              class="w-full rounded-lg border border-walmart-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-walmart-blue-100">
+        <option value="">All Banners</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-walmart-gray-100 mb-1">Project Type</label>
+      <select id="proj-filter-type" onchange="renderProjects()"
+              class="w-full rounded-lg border border-walmart-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-walmart-blue-100">
+        <option value="">All Types</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-walmart-gray-100 mb-1">Status</label>
+      <select id="proj-filter-status" onchange="renderProjects()"
+              class="w-full rounded-lg border border-walmart-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-walmart-blue-100">
+        <option value="">All Statuses</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-walmart-gray-100 mb-1">Contractor</label>
+      <select id="proj-filter-contractor" onchange="renderProjects()"
+              class="w-full rounded-lg border border-walmart-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-walmart-blue-100">
+        <option value="">All Contractors</option>
+      </select>
+    </div>
+    <div class="lg:col-span-2">
+      <label class="block text-xs font-medium text-walmart-gray-100 mb-1">Search</label>
+      <input id="proj-search" type="text" placeholder="Search store, city, scope, contractor…"
+             oninput="debounce(renderProjects, 300)()"
+             class="w-full rounded-lg border border-walmart-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-walmart-blue-100">
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="overflow-x-auto w-full">
+    <table class="w-full text-xs table-fixed" role="table" id="proj-table">
+      <colgroup>
+        <col style="width:7%"><col style="width:6%"><col style="width:7%"><col style="width:5%">
+        <col style="width:9%"><col style="width:14%"><col style="width:9%"><col style="width:11%">
+        <col style="width:7%"><col style="width:7%"><col style="width:8%"><col style="width:8%">
+      </colgroup>
+      <thead>
+        <tr class="bg-walmart-gray-10 border-b border-walmart-gray-50">
+          <th class="text-left py-2 px-2 font-semibold cursor-pointer text-xs" onclick="sortProjects('project_id')">Entity ID <span id="proj-sort-project_id" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-left py-2 px-2 font-semibold cursor-pointer text-xs" onclick="sortProjects('banner')">Banner <span id="proj-sort-banner" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-left py-2 px-2 font-semibold cursor-pointer text-xs" onclick="sortProjects('project_type')">Type <span id="proj-sort-project_type" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-left py-2 px-2 font-semibold cursor-pointer text-xs" onclick="sortProjects('store')">Store <span id="proj-sort-store" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-left py-2 px-2 font-semibold text-xs">Location</th>
+          <th class="text-left py-2 px-2 font-semibold text-xs">Scope</th>
+          <th class="text-left py-2 px-2 font-semibold cursor-pointer text-xs" onclick="sortProjects('project_status')">Status <span id="proj-sort-project_status" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-left py-2 px-2 font-semibold text-xs">Contractor</th>
+          <th class="text-left py-2 px-2 font-semibold cursor-pointer text-xs" onclick="sortProjects('created_date')">Created <span id="proj-sort-created_date" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-left py-2 px-2 font-semibold text-xs">Completed</th>
+          <th class="text-right py-2 px-2 font-semibold cursor-pointer text-xs" onclick="sortProjects('budget_total')">Budget <span id="proj-sort-budget_total" class="text-walmart-gray-50">▴▾</span></th>
+          <th class="text-right py-2 px-2 font-semibold cursor-pointer text-xs" onclick="sortProjects('budget_actuals')">Actuals <span id="proj-sort-budget_actuals" class="text-walmart-gray-50">▴▾</span></th>
+        </tr>
+      </thead>
+      <tbody id="proj-tbody"></tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,384 @@
+<script>
+// ── Helpers ──────────────────────────────────────────────────────
+const fmt = v => v == null ? '$0.00' : '$' + Number(v).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const fmtK = v => {
+  if (!v) return '$0'; const a = Math.abs(v);
+  if (a >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+  if (a >= 1e3) return '$' + (v/1e3).toFixed(0) + 'K';
+  return '$' + v.toFixed(0);
+};
+const esc = s => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
+const pct = (n, d) => d ? (n / d * 100) : 0;
+let _debounceTimers = {};
+function debounce(fn, ms) { return () => { clearTimeout(_debounceTimers[fn.name]); _debounceTimers[fn.name] = setTimeout(fn, ms); }; }
+
+const STATUS_COLORS = {'Active':'bg-walmart-green-10 text-walmart-green-100','Complete':'bg-walmart-blue-10 text-walmart-blue-100','Construction Complete':'bg-walmart-blue-10 text-walmart-blue-100','On Hold':'bg-walmart-spark-10 text-walmart-spark-140','Due Diligence':'bg-walmart-spark-10 text-walmart-spark-140','Financial Closeout':'bg-walmart-gray-10 text-walmart-gray-160','Construction':'bg-blue-50 text-blue-700','Design':'bg-blue-50 text-blue-700'};
+const TYPE_COLORS = {'WATER':'bg-blue-100 text-blue-800','GAS':'bg-orange-100 text-orange-800','SANITARY':'bg-yellow-100 text-yellow-800'};
+function statusBadge(s) { const c = STATUS_COLORS[s] || 'bg-walmart-red-10 text-walmart-red-100'; return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${c}">${esc(s||'Unknown')}</span>`; }
+function typeBadge(t) { let c='bg-purple-100 text-purple-800'; for(const[k,v] of Object.entries(TYPE_COLORS)){if((t||'').includes(k)){c=v;break;}} return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c}">${esc((t||'').replace('PLBG ',''))}</span>`; }
+function bannerBadge(b) { if(b==="Sam's Club") return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Sam\'s</span>'; if(b==="DC") return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">DC</span>'; return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Walmart</span>'; }
+
+// ── Tab switching ────────────────────────────────────────────
+let chartsInitialized = false;
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('bg-white/25','font-bold'); b.classList.add('hover:bg-white/15'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  const btn = document.querySelector(`[data-tab-btn="${name}"]`);
+  btn.classList.add('bg-white/25','font-bold'); btn.classList.remove('hover:bg-white/15');
+  // Widen main for tables
+  const main = document.getElementById('main-content');
+  if (name === 'projects' || name === 'pos') { main.classList.remove('max-w-7xl'); main.classList.add('max-w-full'); }
+  else { main.classList.add('max-w-7xl'); main.classList.remove('max-w-full'); }
+  if (name === 'dashboard' && !chartsInitialized) { initCharts(); chartsInitialized = true; }
+}
+
+// ── Cost toggle ─────────────────────────────────────────────
+function toggleCosts() {
+  const body = document.body, btn = document.getElementById('cost-toggle'),
+    dot = document.getElementById('cost-toggle-dot'), label = document.getElementById('cost-toggle-label');
+  const hidden = body.classList.toggle('costs-hidden');
+  btn.setAttribute('aria-checked', !hidden);
+  dot.classList.toggle('translate-x-4', !hidden); dot.classList.toggle('translate-x-0.5', hidden);
+  btn.classList.toggle('bg-white/30', !hidden); btn.classList.toggle('bg-red-400/60', hidden);
+  label.textContent = hidden ? 'OFF' : 'ON';
+  label.classList.toggle('text-white/90', !hidden); label.classList.toggle('text-red-200', hidden);
+  sessionStorage.setItem('costsHidden', hidden ? '1' : '0');
+}
+
+// ── WBS Nodes (client-side year filter) ─────────────────────
+function initWbsYearDropdown() {
+  const sel = document.getElementById('wbs-year-select');
+  const years = [...new Set(DATA.wbsNodes.filter(n => n.approval_year > 0).map(n => n.approval_year))].sort((a,b) => b-a);
+  years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = 'FY' + y; sel.appendChild(o); });
+}
+
+function renderWbsNodes() {
+  const yearVal = document.getElementById('wbs-year-select').value;
+  const year = yearVal ? parseInt(yearVal) : null;
+  // Aggregate nodes
+  const nodeKeys = [...new Set(DATA.wbsNodes.map(n => n.node_key))].sort();
+  const nodes = nodeKeys.map(key => {
+    const rows = DATA.wbsNodes.filter(n => n.node_key === key && (!year || n.approval_year === year));
+    if (!rows.length) return { node_key: key, node_label: DATA.wbsNodes.find(n => n.node_key === key)?.node_label || key, current_budget: 0 };
+    return {
+      node_key: key, node_label: rows[0].node_label, description: rows[0].description,
+      original_budget: rows.reduce((s,r) => s + (r.original_budget||0), 0),
+      supplemental_budget: rows.reduce((s,r) => s + (r.supplemental_budget||0), 0),
+      returned_budget: rows.reduce((s,r) => s + (r.returned_budget||0), 0),
+      current_budget: rows.reduce((s,r) => s + (r.current_budget||0), 0),
+      actuals: rows.reduce((s,r) => s + (r.actuals||0), 0),
+      open_commitments: rows.reduce((s,r) => s + (r.open_commitments||0), 0),
+      budget_available: rows.reduce((s,r) => s + (r.budget_available||0), 0),
+      budget_cf_from_prev: rows.reduce((s,r) => s + (r.budget_cf_from_prev||0), 0),
+      budget_cf_to_next: rows.reduce((s,r) => s + (r.budget_cf_to_next||0), 0),
+      project_count: rows.reduce((s,r) => s + (r.project_count||0), 0),
+    };
+  });
+
+  const container = document.getElementById('wbs-cards-container');
+  container.innerHTML = `<div class="grid grid-cols-1 lg:grid-cols-${nodes.length} gap-4 mb-6">${nodes.map(n => wbsCard(n, year)).join('')}</div>`;
+
+  // Totals
+  const tb = nodes.reduce((s,n) => s + (n.current_budget||0), 0);
+  const ts = nodes.reduce((s,n) => s + (n.actuals||0), 0);
+  const tc = nodes.reduce((s,n) => s + (n.open_commitments||0), 0);
+  const ta = nodes.reduce((s,n) => s + (n.budget_available||0), 0);
+  const totals = document.getElementById('wbs-totals-container');
+  if (tb > 0) {
+    const ac = ta > 0 ? 'text-walmart-green-100' : 'text-walmart-red-100';
+    totals.innerHTML = `<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-walmart-gray-50">
+      <div class="text-center"><p class="text-xs text-walmart-gray-100 font-semibold uppercase">Combined Budget</p><p class="text-lg font-bold cost-data">${fmt(tb)}</p></div>
+      <div class="text-center"><p class="text-xs text-walmart-gray-100 font-semibold uppercase">Total Spent</p><p class="text-lg font-bold text-walmart-blue-100 cost-data">${fmt(ts)}</p></div>
+      <div class="text-center"><p class="text-xs text-walmart-gray-100 font-semibold uppercase">Total Committed</p><p class="text-lg font-bold text-walmart-spark-140 cost-data">${fmt(tc)}</p></div>
+      <div class="text-center"><p class="text-xs text-walmart-gray-100 font-semibold uppercase">Total Available</p><p class="text-lg font-bold ${ac} cost-data">${fmt(ta)}</p></div>
+    </div>`;
+  } else { totals.innerHTML = ''; }
+}
+
+function wbsCard(n, selectedYear) {
+  const has = (n.current_budget||0) > 0;
+  const border = has ? 'border-walmart-blue-100/20 bg-walmart-blue-10/30' : 'border-walmart-gray-50 bg-walmart-gray-5';
+  const badge = has ? `<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-walmart-green-10 text-walmart-green-100">${n.project_count} projects</span>` : '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-walmart-gray-10 text-walmart-gray-100">No data</span>';
+  if (!has) return `<div class="rounded-lg border ${border} p-4"><div class="flex items-center justify-between mb-3"><div><p class="text-sm font-bold">${esc(n.node_label)}</p><p class="text-xs text-walmart-gray-100 font-mono">${esc(n.node_key)}</p></div>${badge}</div><p class="text-xs text-walmart-gray-100 italic">Node not found in SAP${selectedYear ? ' for FY'+selectedYear : ''}.</p></div>`;
+
+  const ps = pct(n.actuals, n.current_budget), pc = pct(n.open_commitments, n.current_budget), pa = pct(n.budget_available, n.current_budget);
+  const over = n.budget_available < 0;
+  const barCls = over ? 'bg-walmart-red-100' : 'bg-walmart-blue-100';
+  const availCls = n.budget_available > 0 ? 'text-walmart-green-100' : 'text-walmart-red-100';
+  const overWarn = over ? `<div class="mb-3 px-2 py-1 bg-walmart-red-10 border border-walmart-red-100/30 rounded text-xs text-walmart-red-100 font-semibold">⚠ Over budget by ${fmt(Math.abs(n.budget_available))}</div>` : '';
+
+  let movements = '';
+  if (n.supplemental_budget || n.returned_budget || n.budget_cf_from_prev) {
+    let items = `<div class="flex justify-between"><dt class="text-walmart-gray-100">Original Budget</dt><dd class="cost-data">${fmt(n.original_budget)}</dd></div>`;
+    if (n.supplemental_budget) items += `<div class="flex justify-between"><dt class="text-walmart-gray-100">Supplemental</dt><dd class="text-walmart-green-100 cost-data">+${fmt(n.supplemental_budget)}</dd></div>`;
+    if (n.returned_budget) items += `<div class="flex justify-between"><dt class="text-walmart-gray-100">Returned</dt><dd class="text-walmart-red-100 cost-data">${fmt(n.returned_budget)}</dd></div>`;
+    if (n.budget_cf_from_prev) items += `<div class="flex justify-between"><dt class="text-walmart-gray-100">Carry-Forward In</dt><dd class="text-walmart-blue-100 cost-data">${fmt(n.budget_cf_from_prev)}</dd></div>`;
+    if (n.budget_cf_to_next) items += `<div class="flex justify-between"><dt class="text-walmart-gray-100">Carry-Forward Out</dt><dd class="text-walmart-spark-140 cost-data">${fmt(n.budget_cf_to_next)}</dd></div>`;
+    movements = `<details class="mt-3 text-xs"><summary class="cursor-pointer text-walmart-blue-100 hover:underline font-medium">Budget movements</summary><dl class="space-y-1 mt-2 pl-2 border-l-2 border-walmart-blue-10">${items}</dl></details>`;
+  }
+
+  return `<div class="rounded-lg border ${border} p-4">
+    <div class="flex items-center justify-between mb-3"><div><p class="text-sm font-bold">${esc(n.node_label)}</p><p class="text-xs text-walmart-gray-100 font-mono">${esc(n.node_key)}</p></div>${badge}</div>
+    <div class="w-full bg-walmart-gray-10 rounded-full h-3 overflow-hidden flex mb-3"><div class="${barCls} h-full" style="width:${Math.min(ps,100)}%"></div>${!over?`<div class="bg-walmart-spark-100 h-full" style="width:${pc}%"></div>`:''}</div>
+    <div class="flex justify-between text-[10px] text-walmart-gray-100 mb-3"><span>Spent ${ps.toFixed(0)}%</span><span>Committed ${pc.toFixed(0)}%</span><span>Available ${pa.toFixed(0)}%</span></div>
+    ${overWarn}
+    <dl class="space-y-1.5 text-xs">
+      <div class="flex justify-between"><dt class="text-walmart-gray-100">Current Budget</dt><dd class="font-bold cost-data">${fmt(n.current_budget)}</dd></div>
+      <div class="flex justify-between"><dt class="text-walmart-gray-100">Actuals (Spent)</dt><dd class="font-semibold text-walmart-blue-100 cost-data">${fmt(n.actuals)}</dd></div>
+      <div class="flex justify-between"><dt class="text-walmart-gray-100">Open Commitments</dt><dd class="font-semibold text-walmart-spark-140 cost-data">${fmt(n.open_commitments)}</dd></div>
+      <div class="flex justify-between border-t border-walmart-gray-10 pt-1.5"><dt class="text-walmart-gray-100 font-medium">Available</dt><dd class="font-bold ${availCls} cost-data">${fmt(n.budget_available)}</dd></div>
+    </dl>
+    ${movements}
+  </div>`;
+}
+
+// ── Charts ──────────────────────────────────────────────────
+const WM_BLUE='#0053e2',WM_SPARK='#ffc220',WM_GREEN='#2a8703',WM_RED='#ea1100';
+const PALETTE=[WM_BLUE,WM_SPARK,WM_GREEN,WM_RED,'#80a9f1','#ffe18f','#995213','#ccc'];
+
+function initCharts() {
+  Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif"; Chart.defaults.plugins.legend.labels.usePointStyle=true;
+  const bt=DATA.byType;
+  new Chart(document.getElementById('chartByType'),{type:'doughnut',data:{labels:bt.map(d=>d.project_type.replace('PLBG ','')),datasets:[{data:bt.map(d=>d.cnt),backgroundColor:PALETTE.slice(0,bt.length),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+  const bs=DATA.byStatus; const sc={'Active':WM_GREEN,'Complete':WM_BLUE,'On Hold':WM_SPARK,'Cancelled':WM_RED};
+  new Chart(document.getElementById('chartByStatus'),{type:'doughnut',data:{labels:bs.map(d=>d.project_status),datasets:[{data:bs.map(d=>d.cnt),backgroundColor:bs.map(d=>sc[d.project_status]||'#ccc'),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+  const bd=DATA.budgetByType;
+  new Chart(document.getElementById('chartBudget'),{type:'bar',data:{labels:bd.map(d=>d.project_type.replace('PLBG ','')),datasets:[{label:'Actuals',data:bd.map(d=>d.budget_actuals),backgroundColor:WM_BLUE},{label:'Committed',data:bd.map(d=>d.budget_committed),backgroundColor:WM_SPARK},{label:'Open',data:bd.map(d=>d.budget_open),backgroundColor:'#80a9f1'}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K'}}},plugins:{legend:{position:'bottom'}}}});
+}
+
+// ── Projects Tab ─────────────────────────────────────────────
+let projSort = {field:'project_id', asc:true};
+
+function initProjectFilters() {
+  const p = DATA.projects;
+  fillSelect('proj-filter-banner', [...new Set(p.map(r=>r.banner).filter(Boolean))].sort());
+  fillSelect('proj-filter-type', [...new Set(p.map(r=>r.project_type).filter(Boolean))].sort(), t=>t.replace('PLBG ',''));
+  fillSelect('proj-filter-status', [...new Set(p.map(r=>r.project_status).filter(Boolean))].sort());
+  fillSelect('proj-filter-contractor', [...new Set(p.map(r=>r.general_contractor).filter(Boolean))].sort());
+}
+
+function fillSelect(id, vals, labelFn) {
+  const sel = document.getElementById(id);
+  vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = labelFn ? labelFn(v) : v; sel.appendChild(o); });
+}
+
+function renderProjects() {
+  const banner = document.getElementById('proj-filter-banner').value;
+  const type = document.getElementById('proj-filter-type').value;
+  const status = document.getElementById('proj-filter-status').value;
+  const contractor = document.getElementById('proj-filter-contractor').value;
+  const search = (document.getElementById('proj-search').value || '').toLowerCase();
+
+  let rows = DATA.projects.filter(p => {
+    if (banner && p.banner !== banner) return false;
+    if (type && p.project_type !== type) return false;
+    if (status && p.project_status !== status) return false;
+    if (contractor && p.general_contractor !== contractor) return false;
+    if (search) {
+      const hay = [p.store,p.city,p.state,p.brief_scope_of_work,p.general_contractor,p.project_id,p.store_sequence,p.project_type].map(x=>(x||'').toLowerCase()).join(' ');
+      const terms = search.split(';').map(t=>t.trim()).filter(Boolean);
+      if (!terms.every(t => hay.includes(t))) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  const {field, asc} = projSort;
+  rows.sort((a,b) => {
+    let av = a[field] ?? '', bv = b[field] ?? '';
+    if (typeof av === 'number') return (av - bv) * (asc ? 1 : -1);
+    return String(av).localeCompare(String(bv)) * (asc ? 1 : -1);
+  });
+
+  document.getElementById('proj-count').textContent = rows.length + ' project(s)';
+  const tbody = document.getElementById('proj-tbody');
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="12" class="py-8 text-center text-walmart-gray-100">No projects match your filters.</td></tr>'; return; }
+
+  tbody.innerHTML = rows.map(p => {
+    const scope = esc((p.brief_scope_of_work||'').slice(0,60)) + ((p.brief_scope_of_work||'').length > 60 ? '…' : '');
+    const completed = (p.construction_complete_date && p.construction_complete_date !== '9999-12-31') ? p.construction_complete_date : '—';
+    return `<tr class="border-b border-walmart-gray-10 hover:bg-walmart-blue-10 transition-colors">
+      <td class="py-2 px-2"><a href="https://walmart.lucernex.com/en/project/EntityInfo.jsp?inPanel=false&requestedProjectEntityType=CapitalProject&projectEntityID=${p.project_id}" target="_blank" class="text-walmart-blue-100 font-medium hover:underline">${esc(p.project_id)}</a></td>
+      <td class="py-2 px-2">${bannerBadge(p.banner)}</td>
+      <td class="py-2 px-2">${typeBadge(p.project_type)}</td>
+      <td class="py-2 px-2 font-medium">${esc(p.store)}</td>
+      <td class="py-2 px-2 whitespace-nowrap">${esc(p.city)}, ${esc(p.state)}</td>
+      <td class="py-2 px-2 max-w-[10rem] truncate" title="${esc(p.brief_scope_of_work)}">${scope || '—'}</td>
+      <td class="py-2 px-2">${statusBadge(p.project_status)}</td>
+      <td class="py-2 px-2 max-w-[8rem] truncate" title="${esc(p.general_contractor)}">${esc(p.general_contractor) || '—'}</td>
+      <td class="py-2 px-2 whitespace-nowrap text-xs">${p.created_date ? p.created_date.slice(0,10) : '—'}</td>
+      <td class="py-2 px-2 whitespace-nowrap text-xs">${completed}</td>
+      <td class="py-2 px-2 text-right whitespace-nowrap cost-data">${fmt(p.budget_total)}</td>
+      <td class="py-2 px-2 text-right whitespace-nowrap cost-data">${fmt(p.budget_actuals)}</td>
+    </tr>`;
+  }).join('');
+
+  // Update sort indicators
+  document.querySelectorAll('[id^="proj-sort-"]').forEach(el => { el.className = 'text-walmart-gray-50'; el.textContent = '▴▾'; });
+  const ind = document.getElementById('proj-sort-' + field);
+  if (ind) { ind.className = 'text-walmart-blue-100'; ind.textContent = asc ? '▲' : '▼'; }
+}
+
+function sortProjects(field) {
+  if (projSort.field === field) projSort.asc = !projSort.asc;
+  else { projSort.field = field; projSort.asc = true; }
+  renderProjects();
+}
+
+// ── POs Tab ────────────────────────────────────────────────
+let poSort = {field:'po_number', asc:true};
+
+function initPOFilters() {
+  const p = DATA.pos;
+  fillSelect('po-filter-vendor', [...new Set(p.map(r=>r.vendor).filter(Boolean))].sort());
+  fillSelect('po-filter-status', [...new Set(p.map(r=>r.po_status).filter(Boolean))].sort());
+  fillSelect('po-filter-proj-status', [...new Set(p.map(r=>r.project_status).filter(Boolean))].sort());
+}
+
+function renderPOSummary(filtered) {
+  const total = filtered.length;
+  const totalVal = filtered.reduce((s,p) => s + (p.po_total||0), 0);
+  const invoiced = filtered.reduce((s,p) => s + (p.invoiced_to_date||0), 0);
+  const remaining = filtered.reduce((s,p) => s + (p.remaining_to_invoice||0), 0);
+  const giveBack = filtered.filter(p => (p.project_status||'').toLowerCase() === 'complete' && (p.remaining_to_invoice||0) > 0)
+    .reduce((s,p) => s + p.remaining_to_invoice, 0);
+  const openCount = filtered.filter(p => p.po_status === 'Open').length;
+
+  const card = (label, value, color) => `<div class="bg-white rounded-lg border border-walmart-gray-50 p-3 text-center">
+    <p class="text-xs text-walmart-gray-100 font-semibold uppercase">${label}</p>
+    <p class="text-lg font-bold ${color} cost-data">${value}</p></div>`;
+
+  document.getElementById('po-summary-cards').innerHTML =
+    card('Total POs', total, 'text-walmart-gray-160') +
+    card('Open POs', openCount, 'text-walmart-blue-100') +
+    card('Total Value', fmtK(totalVal), 'text-walmart-blue-100') +
+    card('Invoiced', fmtK(invoiced), 'text-walmart-green-100') +
+    card('Remaining', fmtK(remaining), 'text-walmart-spark-140') +
+    card('Give-Back', fmtK(giveBack), 'text-walmart-red-100');
+}
+
+function renderPOs() {
+  const vendor = document.getElementById('po-filter-vendor').value;
+  const poStatus = document.getElementById('po-filter-status').value;
+  const projStatus = document.getElementById('po-filter-proj-status').value;
+  const hasRemaining = document.getElementById('po-has-remaining').checked;
+  const giveBackOnly = document.getElementById('po-give-back').checked;
+  const search = (document.getElementById('po-search').value || '').toLowerCase();
+
+  let rows = DATA.pos.filter(p => {
+    if (vendor && p.vendor !== vendor) return false;
+    if (poStatus && p.po_status !== poStatus) return false;
+    if (projStatus && p.project_status !== projStatus) return false;
+    if (hasRemaining && (p.remaining_to_invoice||0) <= 0) return false;
+    if (giveBackOnly && !((p.project_status||'').toLowerCase() === 'complete' && (p.remaining_to_invoice||0) > 0)) return false;
+    if (search) {
+      const hay = [p.po_number,p.vendor,p.store,p.project_status,p.po_status,p.scope,p.general_contractor,p.project_type].map(x=>(x||'').toLowerCase()).join(' ');
+      if (!search.split(';').map(t=>t.trim()).filter(Boolean).every(t => hay.includes(t))) return false;
+    }
+    return true;
+  });
+
+  renderPOSummary(rows);
+
+  const {field, asc} = poSort;
+  rows.sort((a,b) => {
+    let av = a[field] ?? '', bv = b[field] ?? '';
+    if (typeof av === 'number') return (av - bv) * (asc ? 1 : -1);
+    return String(av).localeCompare(String(bv)) * (asc ? 1 : -1);
+  });
+
+  document.getElementById('po-count').textContent = rows.length + ' purchase order(s)';
+  const tbody = document.getElementById('po-tbody');
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="9" class="py-8 text-center text-walmart-gray-100">No POs match your filters.</td></tr>'; return; }
+
+  const poBadge = s => {
+    const c = s === 'Open' ? 'bg-walmart-green-10 text-walmart-green-100' : s === 'Closed' ? 'bg-walmart-gray-10 text-walmart-gray-160' : 'bg-walmart-spark-10 text-walmart-spark-140';
+    return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c}">${esc(s)}</span>`;
+  };
+
+  tbody.innerHTML = rows.map(p => `<tr class="border-b border-walmart-gray-10 hover:bg-walmart-blue-10 transition-colors cursor-pointer" onclick="openPoModal('${p.po_number}')">
+    <td class="py-2 px-2 font-medium text-walmart-blue-100">${esc(p.po_number)}</td>
+    <td class="py-2 px-2">${esc(p.vendor)}</td>
+    <td class="py-2 px-2">${esc(p.store)}</td>
+    <td class="py-2 px-2">${statusBadge(p.project_status)}</td>
+    <td class="py-2 px-2">${poBadge(p.po_status)}</td>
+    <td class="py-2 px-2 text-right cost-data">${fmt(p.po_total)}</td>
+    <td class="py-2 px-2 text-right cost-data">${fmt(p.invoiced_to_date)}</td>
+    <td class="py-2 px-2 text-right cost-data ${(p.remaining_to_invoice||0) > 0 ? 'text-walmart-spark-140 font-semibold' : ''}">${fmt(p.remaining_to_invoice)}</td>
+    <td class="py-2 px-2 text-xs">${p.created_date ? p.created_date.slice(0,10) : '—'}</td>
+  </tr>`).join('');
+
+  document.querySelectorAll('[id^="po-sort-"]').forEach(el => { el.className = 'text-walmart-gray-50'; el.textContent = '▴▾'; });
+  const ind = document.getElementById('po-sort-' + field);
+  if (ind) { ind.className = 'text-walmart-blue-100'; ind.textContent = asc ? '▲' : '▼'; }
+}
+
+function sortPOs(field) {
+  if (poSort.field === field) poSort.asc = !poSort.asc;
+  else { poSort.field = field; poSort.asc = true; }
+  renderPOs();
+}
+
+// ── PO Modal ───────────────────────────────────────────────
+function openPoModal(poNum) {
+  const po = DATA.pos.find(p => p.po_number === poNum);
+  if (!po) return;
+  const modal = document.getElementById('po-modal');
+  const backdrop = document.getElementById('po-modal-backdrop');
+  const content = document.getElementById('po-modal-content');
+
+  const invoicePct = po.po_total ? (po.invoiced_to_date / po.po_total * 100) : 0;
+  const remainPct = po.po_total ? (po.remaining_to_invoice / po.po_total * 100) : 0;
+
+  content.innerHTML = `
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-bold">PO ${esc(po.po_number)}</h2>
+      <button onclick="closePoModal()" class="text-walmart-gray-100 hover:text-walmart-gray-160 text-2xl">&times;</button>
+    </div>
+    <div class="space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div><p class="text-xs text-walmart-gray-100">Vendor</p><p class="font-semibold">${esc(po.vendor)}</p></div>
+        <div><p class="text-xs text-walmart-gray-100">Store</p><p class="font-semibold">${esc(po.store)}</p></div>
+        <div><p class="text-xs text-walmart-gray-100">Project Status</p><p>${statusBadge(po.project_status)}</p></div>
+        <div><p class="text-xs text-walmart-gray-100">PO Status</p><p class="font-semibold">${esc(po.po_status)}</p></div>
+      </div>
+      <div class="bg-walmart-gray-5 rounded-lg p-4">
+        <div class="grid grid-cols-3 gap-4 text-center">
+          <div><p class="text-xs text-walmart-gray-100">PO Total</p><p class="text-lg font-bold cost-data">${fmt(po.po_total)}</p></div>
+          <div><p class="text-xs text-walmart-gray-100">Invoiced</p><p class="text-lg font-bold text-walmart-green-100 cost-data">${fmt(po.invoiced_to_date)}</p></div>
+          <div><p class="text-xs text-walmart-gray-100">Remaining</p><p class="text-lg font-bold text-walmart-spark-140 cost-data">${fmt(po.remaining_to_invoice)}</p></div>
+        </div>
+        <div class="mt-3 w-full bg-walmart-gray-10 rounded-full h-2 overflow-hidden flex">
+          <div class="bg-walmart-green-100 h-full" style="width:${invoicePct}%"></div>
+          <div class="bg-walmart-spark-100 h-full" style="width:${remainPct}%"></div>
+        </div>
+        <p class="text-xs text-walmart-gray-100 mt-1">${invoicePct.toFixed(0)}% invoiced</p>
+      </div>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div><p class="text-xs text-walmart-gray-100">Created</p><p>${po.created_date ? po.created_date.slice(0,10) : '—'}</p></div>
+        <div><p class="text-xs text-walmart-gray-100">Last Update</p><p>${po.last_update ? po.last_update.slice(0,10) : '—'}</p></div>
+        <div><p class="text-xs text-walmart-gray-100">SAP Project Def</p><p class="font-mono text-xs">${esc(po.sap_project_definition)}</p></div>
+        <div><p class="text-xs text-walmart-gray-100">Contractor</p><p>${esc(po.general_contractor) || '—'}</p></div>
+      </div>
+      ${po.scope ? `<div><p class="text-xs text-walmart-gray-100">Scope of Work</p><p class="text-sm">${esc(po.scope)}</p></div>` : ''}
+    </div>`;
+
+  backdrop.classList.remove('hidden');
+  modal.classList.remove('translate-x-full');
+}
+
+function closePoModal() {
+  document.getElementById('po-modal').classList.add('translate-x-full');
+  document.getElementById('po-modal-backdrop').classList.add('hidden');
+}
+
+// ── Init ───────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem('costsHidden') === '1') toggleCosts();
+  initCharts(); chartsInitialized = true;
+  initWbsYearDropdown(); renderWbsNodes();
+  initProjectFilters(); renderProjects();
+  initPOFilters(); renderPOs();
+});
+</script>
