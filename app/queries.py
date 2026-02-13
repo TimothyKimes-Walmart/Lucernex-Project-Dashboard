@@ -360,12 +360,49 @@ def get_po_status_summary(search: str | None = None) -> list[dict]:
 
 # ── SAP WBS Node Budgets ─────────────────────────────────────────
 
-def get_wbs_node_budgets() -> list[dict]:
-    """Return all tracked WBS node budget records."""
+def get_wbs_node_years() -> list[int]:
+    """Return distinct fiscal years available in WBS node data."""
     conn = get_db()
     rows = conn.execute(
-        "SELECT * FROM sap_wbs_nodes ORDER BY node_key"
+        "SELECT DISTINCT approval_year FROM sap_wbs_nodes "
+        "WHERE approval_year > 0 ORDER BY approval_year DESC"
     ).fetchall()
+    conn.close()
+    return [r["approval_year"] for r in rows]
+
+
+def get_wbs_node_budgets(year: int | None = None) -> list[dict]:
+    """Return WBS node budget records, optionally filtered by year.
+
+    If year is None, aggregates across all years.
+    """
+    conn = get_db()
+    if year:
+        rows = conn.execute(
+            "SELECT * FROM sap_wbs_nodes WHERE approval_year = ? ORDER BY node_key",
+            (year,),
+        ).fetchall()
+    else:
+        # Aggregate across all years per node.
+        rows = conn.execute("""
+            SELECT node_key, node_label, MAX(description) AS description,
+                   0 AS approval_year,
+                   SUM(original_budget) AS original_budget,
+                   SUM(supplemental_budget) AS supplemental_budget,
+                   SUM(returned_budget) AS returned_budget,
+                   SUM(current_budget) AS current_budget,
+                   SUM(actuals) AS actuals,
+                   SUM(open_commitments) AS open_commitments,
+                   SUM(budget_available) AS budget_available,
+                   SUM(distributed_budget) AS distributed_budget,
+                   SUM(budget_cf_from_prev) AS budget_cf_from_prev,
+                   SUM(budget_cf_to_next) AS budget_cf_to_next,
+                   SUM(project_count) AS project_count,
+                   MAX(last_updated) AS last_updated
+            FROM sap_wbs_nodes
+            GROUP BY node_key, node_label
+            ORDER BY node_key
+        """).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 

@@ -26,6 +26,7 @@ from queries import (
     get_summary_stats,
     get_top_contractors,
     get_wbs_node_budgets,
+    get_wbs_node_years,
 )
 
 from routes_po import router as po_router
@@ -65,6 +66,7 @@ def _dashboard_context(request: Request, search: str | None = None) -> dict:
     po_summary = get_po_status_summary(search=search)
 
     wbs_nodes = get_wbs_node_budgets()
+    wbs_years = get_wbs_node_years()
 
     return {
         "request": request,
@@ -75,6 +77,8 @@ def _dashboard_context(request: Request, search: str | None = None) -> dict:
         "contractors": contractors,
         "po_summary": po_summary,
         "wbs_nodes": wbs_nodes,
+        "wbs_years": wbs_years,
+        "wbs_selected_year": None,
         "search": search or "",
     }
 
@@ -91,6 +95,19 @@ def dashboard_content_partial(request: Request, search: str = Query(None)):
     """HTMX partial: re-render dashboard cards + charts for search."""
     ctx = _dashboard_context(request, search)
     return templates.TemplateResponse("partials/dashboard_content.html", ctx)
+
+
+@app.get("/dashboard/wbs-nodes", response_class=HTMLResponse)
+def wbs_nodes_partial(request: Request, year: int = Query(None)):
+    """HTMX partial: re-render WBS nodes panel for a selected year."""
+    wbs_nodes = get_wbs_node_budgets(year=year if year else None)
+    wbs_years = get_wbs_node_years()
+    return templates.TemplateResponse("partials/wbs_nodes_panel.html", {
+        "request": request,
+        "wbs_nodes": wbs_nodes,
+        "wbs_years": wbs_years,
+        "wbs_selected_year": year,
+    })
 
 
 @app.get("/projects", response_class=HTMLResponse)

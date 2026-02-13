@@ -476,49 +476,59 @@ WBS_NODES = {
 
 
 def pull_wbs_node_budgets(client: bigquery.Client) -> list[dict]:
-    """Pull aggregated budget data for tracked WBS program positions."""
+    """Pull budget data for tracked WBS program positions, grouped by year."""
     node_keys = ", ".join(f"'{k}'" for k in WBS_NODES)
     query = f"""
         SELECT
             program_position,
-            MAX(description) AS description,
+            approval_year,
+            MAX(program_position_desc) AS description,
             COUNT(DISTINCT project_definition) AS project_count,
-            SUM(CAST(original_budget AS FLOAT64)) AS original_budget,
-            SUM(CAST(supplement AS FLOAT64)) AS supplemental_budget,
-            SUM(CAST(retrn AS FLOAT64)) AS returned_budget,
-            SUM(CAST(current_budget AS FLOAT64)) AS current_budget,
-            SUM(CAST(actual AS FLOAT64)) AS actuals,
-            SUM(CAST(commitment AS FLOAT64)) AS open_commitments,
-            SUM(CAST(budget_avail AS FLOAT64)) AS budget_available,
-            SUM(CAST(distributed_budget AS FLOAT64)) AS distributed_budget
+            SUM(SAFE_CAST(original_budget AS FLOAT64)) AS original_budget,
+            SUM(SAFE_CAST(supplemental_budget AS FLOAT64)) AS supplemental_budget,
+            SUM(SAFE_CAST(returned_budget AS FLOAT64)) AS returned_budget,
+            SUM(SAFE_CAST(current_budget AS FLOAT64)) AS current_budget,
+            SUM(SAFE_CAST(total_actual AS FLOAT64)) AS actuals,
+            SUM(SAFE_CAST(total_commitments AS FLOAT64)) AS open_commitments,
+            SUM(SAFE_CAST(current_budget_available AS FLOAT64)) AS budget_available,
+            SUM(SAFE_CAST(distributed_budget AS FLOAT64)) AS distributed_budget,
+            SUM(SAFE_CAST(budget_cf_from_previous_fiscal_year AS FLOAT64)) AS budget_cf_from_prev,
+            SUM(SAFE_CAST(budget_cf_to_next_fiscal_year AS FLOAT64)) AS budget_cf_to_next
         FROM `re-ods-prod.us_re_ods_prod_pub.vw_rps_rb0224_us_report`
         WHERE UPPER(program_position) IN ({node_keys})
-        GROUP BY program_position
+          AND approval_year IS NOT NULL
+        GROUP BY program_position, approval_year
+        ORDER BY program_position, approval_year
     """
-    print("Pulling WBS node budgets from RB0224 report...")
+    print("Pulling WBS node budgets by year from RB0224 report...")
     results = client.query(query).result()
     rows = [dict(row) for row in results]
-    print(f"  Found data for {len(rows)} of {len(WBS_NODES)} tracked nodes")
+    years = sorted({r["approval_year"] for r in rows})
+    nodes = sorted({r["program_position"] for r in rows})
+    print(f"  Found {len(rows)} rows: {len(nodes)} nodes x {len(years)} years ({years})")
     return rows
 
 
 def load_wbs_nodes(nodes: list[dict]) -> None:
-    """Upsert WBS node budget data into SQLite."""
+    """Upsert WBS node budget data (per year) into SQLite."""
     conn = get_db()
     conn.execute("DELETE FROM sap_wbs_nodes")
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     for n in nodes:
         key = n["program_position"].upper()
+        year = n.get("approval_year") or 0
         conn.execute(
             """INSERT OR REPLACE INTO sap_wbs_nodes
-               (node_key, node_label, description, original_budget,
-                supplemental_budget, returned_budget, current_budget,
-                actuals, open_commitments, budget_available,
-                distributed_budget, project_count, last_updated)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (node_key, approval_year, node_label, description,
+                original_budget, supplemental_budget, returned_budget,
+                current_budget, actuals, open_commitments,
+                budget_available, distributed_budget,
+                budget_cf_from_prev, budget_cf_to_next,
+                project_count, last_updated)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
-                key, WBS_NODES.get(key, key), n.get("description", ""),
+                key, year, WBS_NODES.get(key, key), n.get("description", ""),
                 n.get("original_budget", 0) or 0,
                 n.get("supplemental_budget", 0) or 0,
                 n.get("returned_budget", 0) or 0,
@@ -527,25 +537,29 @@ def load_wbs_nodes(nodes: list[dict]) -> None:
                 n.get("open_commitments", 0) or 0,
                 n.get("budget_available", 0) or 0,
                 n.get("distributed_budget", 0) or 0,
+                n.get("budget_cf_from_prev", 0) or 0,
+                n.get("budget_cf_to_next", 0) or 0,
                 n.get("project_count", 0) or 0,
                 now,
             ),
         )
 
-    # Insert placeholder for nodes not found in BQ (like LIFT)
+    # Insert placeholder rows for nodes not found in BQ (like LIFT).
     found_keys = {n["program_position"].upper() for n in nodes}
+    all_years = sorted({n.get("approval_year", 0) for n in nodes}) or [0]
     for key, label in WBS_NODES.items():
         if key not in found_keys:
-            conn.execute(
-                """INSERT OR IGNORE INTO sap_wbs_nodes
-                   (node_key, node_label, description, last_updated)
-                   VALUES (?, ?, ?, ?)""",
-                (key, label, "Not found in SAP", now),
-            )
+            for year in all_years:
+                conn.execute(
+                    """INSERT OR IGNORE INTO sap_wbs_nodes
+                       (node_key, approval_year, node_label, description, last_updated)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (key, year, label, "Not found in SAP", now),
+                )
 
     conn.commit()
     conn.close()
-    print(f"  Loaded {len(nodes)} WBS node budgets")
+    print(f"  Loaded {len(nodes)} WBS node-year rows")
 
 
 # BQ source tables and their freshness queries.
